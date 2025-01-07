@@ -3,11 +3,11 @@
 # FROM ghcr.io/mamba-org/micromamba:1.5.1-focal-cuda-11.3.1
 FROM docker.io/python:3.12.1-slim-bookworm
 
-LABEL org.opencontainers.image.authors="FNNDSC <dev@babyMRI.org>" \
-      org.opencontainers.image.title="ChRIS Plugin Title" \
-      org.opencontainers.image.description="A ChRIS plugin that..."
+LABEL org.opencontainers.image.authors="FNNDSC <rudolph.pienaar@childrens.harvard.edu>" \
+      org.opencontainers.image.title="pl-sclai" \
+      org.opencontainers.image.description="A Simple Client for AI Interaction"
 
-ARG SRCDIR=/usr/local/src/app
+ARG SRCDIR=/usr/local/src/pl-sclai
 WORKDIR ${SRCDIR}
 
 COPY requirements.txt .
@@ -19,4 +19,4 @@ RUN pip install ".[${extras_require}]" \
     && cd / && rm -rf ${SRCDIR}
 WORKDIR /
 
-CMD ["commandname"]
+CMD ["sclai"]
