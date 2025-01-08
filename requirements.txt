@@ -1,1 +1,20 @@
+# Core dependency for ChRIS plugin framework
 chris_plugin==0.4.0
+
+# Library for cross-platform configuration directory management
+appdirs>=1.4.4
+
+# Library for reading and writing TOML files
+toml>=0.10.2
+
+# LangChain library for building AI applications
+langchain>=0.0.200
+
+# OpenAI library for interacting with OpenAI's API
+openai>=0.27.2
+
+# Testing dependencies
+pytest>=7.0.0          # Pytest framework for testing
+pytest-mock>=3.0.0     # Pytest plugin for mocking
+
+pfmongo
