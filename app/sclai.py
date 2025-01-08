@@ -6,7 +6,7 @@ from chris_plugin import chris_plugin
 from app.config.settings import config_initialize, config_update
 from app.lib.repl import repl_start
 
-__version__: str = '1.1.0'
+__version__: str = "0.1.0"
 
 DISPLAY_TITLE: str = r"""
        _                 _       _
@@ -20,21 +20,25 @@ DISPLAY_TITLE: str = r"""
 """
 
 parser: ArgumentParser = ArgumentParser(
-    description='A ChRIS plugin integrating LangChain for AI text generation.',
-    formatter_class=ArgumentDefaultsHelpFormatter
+    description="A ChRIS plugin integrating LangChain for AI text generation.",
+    formatter_class=ArgumentDefaultsHelpFormatter,
 )
-parser.add_argument('--use', type=str, help='Specify the LLM to use (e.g., OpenAI, Claude)')
-parser.add_argument('--key', type=str, help='Specify the API key for the LLM')
-parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
+parser.add_argument(
+    "--use", type=str, help="Specify the LLM to use (e.g., OpenAI, Claude)"
+)
+parser.add_argument("--key", type=str, help="Specify the API key for the LLM")
+parser.add_argument(
+    "-V", "--version", action="version", version=f"%(prog)s {__version__}"
+)
 
 
 @chris_plugin(
     parser=parser,
-    title='pl-sclai',
-    category='',
-    min_memory_limit='200Mi',
-    min_cpu_limit='1000m',
-    min_gpu_limit=0
+    title="pl-sclai",
+    category="",
+    min_memory_limit="200Mi",
+    min_cpu_limit="1000m",
+    min_gpu_limit=0,
 )
 def main(options: Namespace, inputdir: Path, outputdir: Path) -> None:
     """
@@ -60,4 +64,3 @@ def main(options: Namespace, inputdir: Path, outputdir: Path) -> None:
 if __name__ == "__main__":
     # Avoid interference with the @chris_plugin decorator
     pass
-
