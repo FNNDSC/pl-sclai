@@ -24,11 +24,30 @@ The two vectors for use are either as a PyPI application installed into a virtua
 
 ### On the metal with PyPI
 
-To run _on the metal_ directly on your system, use/create a virtual python env (say with `uv`):
+To run _on the metal_ directly on your system, you need to do a little bit of setup first. Warning! It's a little bit _developer-y_ at the moment. Hopefully this will be fixed soon!
+
+Start by creating a virtual python env (say with `uv`):
 
 ```shell
 cd ~/some/dir
-uv init
+uv venv
+```
+
+This will create an isolated "virtual environment" for python modules and programs. Now, install the `pl-sclai` project:
+
+```shell
+source .venv/bin/activate
+uv pip install pl-sclai
+```
+
+and before we run anything we need to set some environment variables for the mongoDB backend:
+
+```shell
+export MD_URI=mongodb://localhost:27017 && \
+export MD_USERNAME=admin && \
+export MD_PASSWORD=admin && \
+export MD_SESSIONUSER=rudolph && \
+export LOGGING=CONSOLE
 ```
 
 ### Containerized version
