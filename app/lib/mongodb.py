@@ -1,10 +1,11 @@
 from pfmongo import pfmongo
 from pfmongo.commands.dbop import connect as database
-from pfmongo.models import responseModel
+from pfmongo.commands.clop import connect as collection
+from pfmongo.models.responseModel import mongodbResponse
 from typing import Optional
 
 
-def db_init(llm_name: str, session_id: str) -> pfmongo.responseModel:
+async def db_init(llm_name: str, session_id: str) -> mongodbResponse:
     """
     Initialize the MongoDB database and collection.
 
@@ -14,14 +15,16 @@ def db_init(llm_name: str, session_id: str) -> pfmongo.responseModel:
     """
     try:
         # Create or connect to the database
-        db: pfmongo.responseModel = database.sync_connectTo_asModel(
-            database.options_add(session_id, pfmongo.options_initialize())
+        db: mongodbResponse = await database.connectTo_asModel(
+            database.options_add(llm_name, pfmongo.options_initialize())
         )
 
-        # Ensure the session collection exists
-        db.collection_create(name=session_id)
+        # Create or connect to the collection
+        col: mongodbResponse = await collection.connectTo_asModel(
+            collection.options_add(session_id, pfmongo.options_initialize())
+        )
         print(f"Initialized database '{llm_name}' with collection '{session_id}'.")
-        return db
+        return col
 
     except Exception as e:
         raise RuntimeError(f"Failed to initialize MongoDB: {e}")

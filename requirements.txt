@@ -18,3 +18,7 @@ pytest>=7.0.0          # Pytest framework for testing
 pytest-mock>=3.0.0     # Pytest plugin for mocking
 
 pfmongo
+click
+click-help-colors
+rich
+
