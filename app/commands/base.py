@@ -5,12 +5,21 @@ This module defines:
 - `RichGroup`: A custom Click group with Rich-enhanced help rendering.
 - `RichCommand`: A custom Click command with Rich-enhanced help rendering.
 
-These classes provide enhanced formatting and colorized output for CLI commands.
+These classes provide enhanced formatting and colorized output for CLI commands,
+offering an improved user experience in terminal environments.
+
+Features:
+- Displays usage information with colorized output.
+- Differentiates between command groups and individual commands.
+- Handles exceptions during help rendering gracefully with logging.
 """
 
 from typing import Optional
 from rich.console import Console
+from rich.text import Text
+from rich.panel import Panel
 import click
+from app.lib.log import LOG
 
 console: Console = Console()
 
@@ -18,6 +27,9 @@ console: Console = Console()
 class RichGroup(click.Group):
     """
     A Click Group that uses Rich for rendering help messages with enhanced colorization.
+
+    Attributes:
+        commands (dict): A dictionary of registered commands within the group.
 
     Methods:
         format_help(ctx, formatter): Renders the group-level help message with Rich formatting.
@@ -30,35 +42,52 @@ class RichGroup(click.Group):
         :param ctx: The Click context for the command group.
         :param formatter: The Click help formatter.
         """
-        info_name: str = ctx.info_name.lstrip("/") if ctx.info_name else ""
-        usage: str = (
-            f"[bold yellow]Usage:[/bold yellow] [cyan]/{info_name}[/cyan] [magenta][OPTIONS] COMMAND [ARGS]...[/magenta]\n"
-        )
-        console.print(usage)
+        try:
+            if ctx.invoked_subcommand:
+                # Forward to the subcommand if one is invoked
+                subcommand = self.get_command(ctx, ctx.invoked_subcommand)
+                if subcommand:
+                    subcommand.format_help(ctx, formatter)
+                    return
 
-        if self.help:
-            console.print(f"[bold cyan]{self.help.strip()}[/bold cyan]\n")
+            # Render the group-level help
+            info_name: str = ctx.info_name.lstrip("/") if ctx.info_name else ""
+            usage: str = (
+                f"[bold yellow]Usage:[/bold yellow] [cyan]/{info_name}[/cyan] "
+                f"[magenta][OPTIONS] COMMAND [ARGS]...[/magenta]\n"
+            )
+            console.print(usage)
 
-        if self.commands:
-            console.print("[bold green]Available Commands:[/bold green]")
-            for name, command in self.commands.items():
-                console.print(
-                    f"- [cyan]{name}[/cyan]: [white]{command.short_help or 'No description available.'}[/white]"
-                )
-            console.print()
+            if self.help:
+                console.print(f"[bold cyan]{self.help.strip()}[/bold cyan]\n")
 
-        params = self.get_params(ctx)
-        if params:
-            console.print("[bold yellow]Options:[/bold yellow]")
-            for param in params:
-                console.print(
-                    f"- [cyan]{param.opts[0]}[/cyan]: {param.help or 'No description'}"
-                )
+            if self.commands:
+                console.print("[bold green]Available Commands:[/bold green]")
+                for name, command in self.commands.items():
+                    console.print(
+                        f"- [cyan]{name}[/cyan]: [white]{command.short_help or 'No description available.'}[/white]"
+                    )
+                console.print()
+
+            params = self.get_params(ctx)
+            if params:
+                console.print("[bold yellow]Options:[/bold yellow]")
+                for param in params:
+                    console.print(
+                        f"- [cyan]{param.opts[0]}[/cyan]: {param.help or 'No description'}"
+                    )
+        except Exception as e:
+            # Log and notify the user of any help rendering errors
+            LOG(f"Help rendering error: {e}")
+            console.print(f"[bold red]Help rendering error:[/bold red] {e}")
 
 
 class RichCommand(click.Command):
     """
-    A Click Command that uses Rich for rendering help messages with enhanced colorization.
+    A Click Command that uses Rich for rendering help messages.
+
+    Attributes:
+        params (list): A list of parameters for the command.
 
     Methods:
         format_help(ctx, formatter): Renders the command-level help message with Rich formatting.
@@ -66,24 +95,34 @@ class RichCommand(click.Command):
 
     def format_help(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         """
-        Render the help message for the command using Rich with enhanced colorization.
+        Render the help message for the command using Rich.
 
         :param ctx: The Click context for the command.
         :param formatter: The Click help formatter.
         """
-        info_name: str = ctx.info_name.lstrip("/") if ctx.info_name else ""
-        usage: str = (
-            f"[bold yellow]Usage:[/bold yellow] [cyan]/{info_name}[/cyan] [magenta][OPTIONS][/magenta]\n"
-        )
-        console.print(usage)
+        try:
+            help_text = self.help or "No help text available."
+            panel_width = max(len(line) for line in help_text.splitlines()) + 10
+            panel_width = min(panel_width, 80)  # Cap the width to avoid excessive size
+            panel = Panel(
+                help_text, expand=False, width=panel_width, border_style="cyan"
+            )
+            console.print(panel)
 
-        if self.help:
-            console.print(f"[bold cyan]{self.help.strip()}[/bold cyan]\n")
-
-        params = self.get_params(ctx)
-        if params:
-            console.print("[bold yellow]Options:[/bold yellow]")
-            for param in params:
-                console.print(
-                    f"- [cyan]{param.opts[0]}[/cyan]: {param.help or 'No description'}"
-                )
+            if self.params:
+                console.print("\n[bold yellow]Options and Arguments:[/bold yellow]")
+                for param in self.params:
+                    if isinstance(param, click.Argument):
+                        console.print(
+                            f"- [cyan]{param.name}[/cyan] ({type(param).__name__}): "
+                            f"(Argument; no description available)"
+                        )
+                    elif isinstance(param, click.Option):
+                        console.print(
+                            f"- [cyan]{param.opts[0]}[/cyan] ({type(param).__name__}): "
+                            f"{param.help or 'No description available.'}"
+                        )
+        except Exception as e:
+            # Log and notify the user of any help rendering errors
+            LOG(f"Help rendering error: {e}")
+            console.print(f"[bold red]Help rendering error:[/bold red] {e}")
