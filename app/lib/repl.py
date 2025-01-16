@@ -12,39 +12,14 @@ import asyncio
 import sys
 from app.commands.app import cli
 from app.models.dataModel import CommandGroup
+import shlex
+import inspect
+import pudb
 
 console: Console = Console()
 
 # Initialize the dynamic command group
 dynamic_commands: CommandGroup = CommandGroup(commands={})
-
-
-def command_handle(user_input: str) -> bool:
-    if not user_input.startswith("/"):
-        return False
-
-    parts = user_input[1:].split()
-    command = parts[0]
-    args = parts[1:]
-
-    try:
-        if command == "exit":
-            return False
-
-        if command == "help":
-            cli.main(args=["--help"], prog_name="/", standalone_mode=False)
-            return True
-
-        cli.main(args=[command] + args, prog_name="/", standalone_mode=False)
-        return True
-    except click.exceptions.UsageError as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
-        return True
-    except SystemExit:
-        return True
-    except Exception as e:
-        console.print(f"[bold red]Unexpected error:[/bold red] {e}")
-        return True
 
 
 async def repl_start() -> None:
@@ -66,7 +41,7 @@ async def repl_start() -> None:
 
             # Handle commands starting with '/'
             if user_input.startswith("/"):
-                if not command_handle(user_input):
+                if not await asyncio.create_task(handle_async_command(user_input)):
                     console.print("[bold cyan]Exiting REPL. Goodbye![/bold cyan]")
                     return
                 continue  # Skip the simulated LLM response for valid commands
@@ -84,3 +59,50 @@ async def repl_start() -> None:
             break  # Exit the loop to allow graceful termination
 
     console.print("[bold cyan]REPL terminated. Goodbye![/bold cyan]")
+
+
+async def handle_async_command(user_input: str) -> bool:
+    """
+    Handle commands starting with '/' in an async-safe manner.
+
+    :param user_input: The user input string.
+    :return: True if the input was a valid command, False otherwise.
+    """
+    # Parse user input using shlex to handle quoted strings properly
+    try:
+        parts = shlex.split(user_input[1:])  # Remove the leading '/' and split input
+    except ValueError as e:
+        console.print(f"[bold red]Error parsing input: {e}[/bold red]")
+        return True
+
+    if not parts:
+        console.print("[bold red]Error: No command provided.[/bold red]")
+        return True
+
+    command = parts[0]  # First part is the command
+    args = parts[1:]  # Remaining parts are arguments
+
+    try:
+        if command == "exit":
+            return False  # Exit the REPL loop
+
+        if command == "help" or "--help" in args:
+            # Handle help commands synchronously
+            cli.main(
+                args=["--help"] if command == "help" else [command, "--help"],
+                prog_name="/",
+                standalone_mode=False,
+            )
+            return True
+
+        # Execute the command asynchronously and wait for completion
+        await cli.main(args=[command] + args, prog_name="/", standalone_mode=False)
+        return True
+    except click.exceptions.UsageError as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        return True
+    except SystemExit:
+        return True  # Suppress SystemExit from Click
+    except Exception as e:
+        console.print(f"[bold red]Unexpected error:[/bold red] {e}")
+        return True
