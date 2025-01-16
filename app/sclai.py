@@ -29,11 +29,11 @@ from app.lib.repl import repl_start
 import asyncio
 import signal
 from rich.console import Console
-from app.lib.log import LOG
+from app.lib.log import LOG, app_logger
 import sys
 from typing import Optional
 from types import FrameType
-from app.models.dataModel import InitializationResult
+from app.models.dataModel import InitializationResult, DatabaseCollectionModel
 
 __version__: str = "0.1.0"
 
@@ -95,8 +95,13 @@ def main(options: Namespace, inputdir: Path, outputdir: Path) -> None:
         try:
             # Initialize configuration
             result: InitializationResult = await config_initialize()
-            result = await databaseCollection_initialize("claimm", "vars")
-            result = await databaseCollection_initialize("claimm", "crawl")
+            result = await databaseCollection_initialize(
+                DatabaseCollectionModel(database="claimm", collection="vars"),
+            )
+
+            result = await databaseCollection_initialize(
+                DatabaseCollectionModel(database="claimm", collection="crawl"),
+            )
             if not result.status:
                 console.print(
                     f"[bold red]Configuration initialization failed: {result.message}[/bold red]"
