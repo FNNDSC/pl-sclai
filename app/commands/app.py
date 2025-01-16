@@ -15,6 +15,7 @@ import click
 from app.commands.base import RichGroup
 from app.commands.mongo import mongo
 from app.commands.llm import llm
+from app.commands.var import var
 
 console: Console = Console()
 
@@ -40,6 +41,7 @@ cli: click.Group = cli
 # Register subcommands
 cli.add_command(mongo)
 cli.add_command(llm)
+cli.add_command(var)
 
 # Export the `cli` group for use in other modules
 cli_group: click.Group = cli
