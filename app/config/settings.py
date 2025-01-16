@@ -18,9 +18,14 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 from appdirs import user_config_dir
-from app.lib.mongodb import db_init, db_contains, db_add
-from app.models.dataModel import InitializationResult, DefaultDocument
+from app.models.dataModel import (
+    InitializationResult,
+    DefaultDocument,
+    DocumentData,
+    DatabaseCollectionModel,
+)
 from app.lib.log import LOG
+from app.lib.mongodb import db_init, db_contains, db_docAdd
 from pydantic_settings import BaseSettings
 from pfmongo.models.responseModel import mongodbResponse
 
@@ -49,6 +54,9 @@ class App(BaseSettings):
         detailedOutput (bool): Enable detailed output.
         eventLoopDebug (bool): Enable asyncio event loop debug mode.
         fontawesomeUse (bool): Use FontAwesome in outputs.
+        settings_dbcollection (str): Path to the MongoDB collection for application settings.
+        vars_dbcollection (str): Path to the MongoDB collection for user-defined variables.
+        crawl_dbcollection (str): Path to the MongoDB collection for web crawl data.
     """
 
     beQuiet: bool = False
@@ -56,13 +64,44 @@ class App(BaseSettings):
     detailedOutput: bool = False
     eventLoopDebug: bool = False
     fontawesomeUse: bool = True
+    settings_dbcollection: str = "/claimm/settings"
+    vars_dbcollection: str = "/claimm/vars"
+    crawl_dbcollection: str = "/claimm/crawl"
+
+    def parse_dbcollection(self, dbcollection: str) -> DatabaseCollectionModel:
+        """
+        Parse a dbcollection string into database and collection components.
+
+        :param dbcollection: The dbcollection string (e.g., '/database/collection').
+        :return: A DatabaseCollectionModel containing the database and collection names.
+        :raises ValueError: If the input string is not properly formatted.
+        """
+        if not dbcollection.startswith("/") or dbcollection.count("/") != 2:
+            raise ValueError(
+                f"Invalid dbcollection format: '{dbcollection}'. Expected format: '/database/collection'."
+            )
+
+        _, database, collection = dbcollection.split("/")
+        return DatabaseCollectionModel(database=database, collection=collection)
 
     class Config:
-        env_prefix = "SCL_"  # Matches environment variables with SCL to this app
-        case_sensitive = False  # Optional: Allows case-insensitive matching
+        """
+        Configuration for Pydantic settings.
+
+        Attributes:
+            env_prefix (str): The prefix for environment variables.
+            case_sensitive (bool): Whether environment variable names are case-sensitive.
+        """
+
+        env_prefix: str = (
+            "SCL_"  # Matches environment variables with this prefix to the settings
+        )
+        case_sensitive: bool = (
+            False  # Allows case-insensitive matching of environment variables
+        )
 
 
-def validate_json(data: dict) -> bool:
+def validate_json(data: dict[str, Any]) -> bool:
     """
     Validate if the provided data is serializable as JSON.
 
@@ -78,23 +117,23 @@ def validate_json(data: dict) -> bool:
 
 
 async def databaseCollection_initialize(
-    database: str, collection: str, document: Optional[DefaultDocument] = None
+    db_collection: DatabaseCollectionModel, document: Optional[DefaultDocument] = None
 ) -> InitializationResult:
     """
     Generalized method to initialize a MongoDB database and collection, with a default document.
 
-    :param database: The name of the database.
-    :param collection: The name of the collection.
+    :param db_collection: A DatabaseCollectionModel containing the database and collection names.
     :param document: The document to initialize in the collection. Defaults to a basic document if not provided.
     :return: InitializationResult indicating success/failure and source (MongoDB or local storage).
     """
-    # Use default document if none is provided
-    if document is None:
-        document = DefaultDocument(path=f"{database}/{collection}")
+    # Use the provided document or create a default one
+    document = document or DefaultDocument(
+        path=f"{db_collection.database}/{db_collection.collection}"
+    )
 
     # Ensure document has a valid id
     if not document.id:
-        document.id = f"{collection}_default.json"
+        document.id = f"{db_collection.collection}_default.json"
 
     # Validate the document
     if not validate_json(document.model_dump()):
@@ -106,19 +145,17 @@ async def databaseCollection_initialize(
 
     try:
         # Initialize MongoDB
-        LOG(
-            f"Initializing MongoDB database '{database}' and collection '{collection}'."
-        )
-        db: mongodbResponse
-        col: mongodbResponse
-        db, col = await db_init(database, collection)
+        db_response: mongodbResponse
+        col_response: mongodbResponse
+        db_response, col_response = await db_init(db_collection)
 
         # Check if the document exists
         response: mongodbResponse = await db_contains(document.id)
         if not response.status:
-            add_result: mongodbResponse = await db_add(
-                document.model_dump(), document.id
+            doc_data: DocumentData = DocumentData(
+                data=document.model_dump(), id=document.id
             )
+            add_result: mongodbResponse = await db_docAdd(doc_data)
             if add_result.status:
                 LOG(f"Document added to MongoDB: {add_result.message}")
                 return InitializationResult(
@@ -135,7 +172,9 @@ async def databaseCollection_initialize(
             )
     except Exception as e:
         LOG(f"MongoDB initialization failed: {e}")
-        return _initialize_local(database, collection, document)
+        return _initialize_local(
+            db_collection.database, db_collection.collection, document
+        )
 
 
 def _initialize_local(
@@ -172,10 +211,15 @@ async def config_initialize() -> InitializationResult:
 
     :return: InitializationResult indicating the result of the operation.
     """
-    return await databaseCollection_initialize("claimm", "settings", DEFAULT_META)
+    result: InitializationResult = await databaseCollection_initialize(
+        DatabaseCollectionModel(database="claimm", collection="settings"),
+        document=DEFAULT_META,
+    )
+
+    return result
 
 
-async def config_update(llm: str | None, key: str | None) -> bool:
+async def config_update(llm: Optional[str], key: Optional[str]) -> bool:
     """
     Updates the MongoDB 'meta' collection or the local configuration file with the specified LLM and/or API key.
 
@@ -184,15 +228,12 @@ async def config_update(llm: str | None, key: str | None) -> bool:
     :return: True if the configuration update succeeds, False otherwise.
     """
     try:
-        # Check if MongoDB is initialized
         response: mongodbResponse = await db_contains(DEFAULT_META.id or "")
 
         if response.status:
             LOG("Updating configuration in MongoDB.")
-            # Fetch existing configuration from MongoDB
-            existing_config: dict = json.loads(response.message)
+            existing_config: dict[str, Any] = json.loads(response.message)
 
-            # Update the LLM and/or API key in the configuration
             if llm:
                 existing_config["metadata"]["use"] = llm
             if key:
@@ -203,10 +244,10 @@ async def config_update(llm: str | None, key: str | None) -> bool:
                         "You must specify '--use' with '--key' to associate the key with an LLM."
                     )
 
-            # Save updated configuration to MongoDB
-            add_result: mongodbResponse = await db_add(
-                existing_config, DEFAULT_META.id or ""
+            doc_data: DocumentData = DocumentData(
+                data=existing_config, id=DEFAULT_META.id or ""
             )
+            add_result: mongodbResponse = await db_docAdd(doc_data)
             if add_result.status:
                 LOG("Configuration successfully updated in MongoDB.")
                 return True
@@ -214,12 +255,15 @@ async def config_update(llm: str | None, key: str | None) -> bool:
                 LOG("Failed to update configuration in MongoDB.")
                 return False
         else:
-            # Fallback to local configuration
             LOG("MongoDB unavailable. Falling back to local configuration file.")
             if CONFIG_FILE.exists():
-                config: dict = json.loads(CONFIG_FILE.read_text())
+                config: dict[str, Any] = json.loads(CONFIG_FILE.read_text())
             else:
-                config = DEFAULT_META.dict()
+                config: dict[str, Any] = {
+                    "metadata": DEFAULT_META.metadata,
+                    "path": DEFAULT_META.path,
+                    "id": DEFAULT_META.id,
+                }
 
             if llm:
                 config["metadata"]["use"] = llm
