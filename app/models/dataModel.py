@@ -1,12 +1,27 @@
+"""
+dataModel.py
+
+This module defines the data models and schemas used throughout the SCLAI application.
+The models leverage Pydantic for validation and type safety.
+
+Features:
+- Enum classes for message and logging types.
+- Models for MongoDB interaction results and default document structures.
+- Data structures for REPL commands and dynamic command groups.
+
+Usage:
+Import these models to validate and structure data used in the application.
+"""
+
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Any, Dict
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
+from pfmongo.models.responseModel import mongodbResponse
 import click
 
 
-class messageType(Enum):
+class MessageType(Enum):
     """
     Enum for message type/level.
     """
@@ -15,7 +30,7 @@ class messageType(Enum):
     ERROR = 2
 
 
-class loggingType(Enum):
+class LoggingType(Enum):
     """
     Enum for logging type.
     """
@@ -24,12 +39,12 @@ class loggingType(Enum):
     NDJSON = 2
 
 
-class time(BaseModel):
+class Time(BaseModel):
     """
     A simple model that includes a time string field.
     """
 
-    time: str
+    time: str = Field(..., description="Timestamp in ISO 8601 format.")
 
 
 class InitializationResult(BaseModel):
@@ -44,7 +59,9 @@ class InitializationResult(BaseModel):
 
     status: bool
     source: str
-    message: Optional[str] = None
+    message: Optional[str] = Field(
+        default=None, description="Additional context or information."
+    )
 
 
 class DefaultDocument(BaseModel):
@@ -57,7 +74,7 @@ class DefaultDocument(BaseModel):
         metadata (Optional[dict]): Additional metadata for the document.
     """
 
-    path: str
+    path: str = Field(..., description="Logical path as '<database>/<collection>'.")
     id: Optional[str] = Field(
         default=None, description="Unique identifier for the document."
     )
@@ -71,10 +88,12 @@ class CommandGroup(BaseModel):
     Model to define the structure for dynamic commands in the REPL.
 
     Attributes:
-        commands: A dictionary mapping command names to their associated Click groups.
+        commands (dict[str, click.Group]): A dictionary mapping command names to their associated Click groups.
     """
 
-    commands: dict[str, click.Group]
+    commands: Dict[str, click.Group] = Field(
+        ..., description="Mapping of command names to Click groups."
+    )
 
     class Config:
         """
@@ -82,3 +101,46 @@ class CommandGroup(BaseModel):
         """
 
         arbitrary_types_allowed = True
+
+
+class DbInitResult(BaseModel):
+    """
+    Model representing the result of the `db_init` function.
+
+    Attributes:
+        db_response (mongodbResponse): The response object for the database connection.
+        col_response (mongodbResponse): The response object for the collection connection.
+    """
+
+    db_response: mongodbResponse = Field(
+        ..., description="Response object for the database connection."
+    )
+    col_response: mongodbResponse = Field(
+        ..., description="Response object for the collection connection."
+    )
+
+
+class DocumentData(BaseModel):
+    """
+    Model representing the input data for the `db_add` function.
+
+    Attributes:
+        data (dict): The document data to be added to the collection.
+        id (str): The unique identifier for the document.
+    """
+
+    data: Dict[str, Any] = Field(..., description="The document data to store.")
+    id: str = Field(..., description="The unique identifier for the document.")
+
+
+class DatabaseCollectionModel(BaseModel):
+    """
+    Model to represent a database and collection parsed from a dbcollection string.
+
+    Attributes:
+        database (str): The name of the database.
+        collection (str): The name of the collection.
+    """
+
+    database: str
+    collection: str
