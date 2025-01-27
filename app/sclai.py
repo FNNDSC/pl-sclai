@@ -141,7 +141,10 @@ def main(options: Namespace, inputdir: Path, outputdir: Path) -> None:
         :param frame: The current stack frame (optional).
         """
         console.print(
-            "\n[bold cyan]Interrupt received. Hit [bold yellow]Enter[/bold yellow][bold cyan] to gracefully exit.[/bold cyan]"
+            """
+            [bold red]Interrupt received. 
+            [bold cyan]Hit [bold yellow]Enter[/bold yellow][bold cyan] to gracefully exit.[/bold cyan]
+            """
         )
         sys.exit(0)
 
