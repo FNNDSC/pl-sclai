@@ -15,6 +15,11 @@ from app.models.dataModel import CommandGroup
 import shlex
 import inspect
 import pudb
+from argparse import Namespace
+from pfmongo.models import fsModel
+from pfmongo.config import settings
+from pfmongo.commands import smash
+from pfmongo import pfmongo
 
 console: Console = Console()
 
@@ -22,9 +27,14 @@ console: Console = Console()
 dynamic_commands: CommandGroup = CommandGroup(commands={})
 
 
+async def prompt_get() -> str:
+    prompt: str = await smash.prompt_get(pfmongo.options_initialize(), "sclai")
+    return prompt
+
+
 async def repl_start() -> None:
     """
-    Start the REPL loop, presenting the user with a prompt, accepting input,
+    Start the REPL loop, presenting the useir with a prompt, accepting input,
     and routing commands or simulating responses from an LLM.
 
     This function handles user commands and gracefully terminates on <Ctrl-C> or '/exit'.
@@ -36,7 +46,8 @@ async def repl_start() -> None:
     while True:
         try:
             # Use asyncio.to_thread to handle input asynchronously
-            user_input: str = await asyncio.to_thread(input, "$> ")
+            prompt: str = await prompt_get()
+            user_input: str = await asyncio.to_thread(input, f"{prompt} ")
             user_input = user_input.strip()
 
             # Handle commands starting with '/'
@@ -88,8 +99,9 @@ async def handle_async_command(user_input: str) -> bool:
 
         if command == "help" or "--help" in args:
             # Handle help commands synchronously
+            full_command = [command] + args  # Include all subcommands and args
             cli.main(
-                args=["--help"] if command == "help" else [command, "--help"],
+                args=full_command if command != "help" else ["--help"],
                 prog_name="/",
                 standalone_mode=False,
             )
