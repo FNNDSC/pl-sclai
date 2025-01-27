@@ -109,19 +109,19 @@ class RichCommand(click.Command):
             )
             console.print(panel)
 
-            if self.params:
-                console.print("\n[bold yellow]Options and Arguments:[/bold yellow]")
-                for param in self.params:
-                    if isinstance(param, click.Argument):
-                        console.print(
-                            f"- [cyan]{param.name}[/cyan] ({type(param).__name__}): "
-                            f"(Argument; no description available)"
-                        )
-                    elif isinstance(param, click.Option):
-                        console.print(
-                            f"- [cyan]{param.opts[0]}[/cyan] ({type(param).__name__}): "
-                            f"{param.help or 'No description available.'}"
-                        )
+            # if self.params:
+            #     console.print("\n[bold yellow]Options and Arguments:[/bold yellow]")
+            #     for param in self.params:
+            #         if isinstance(param, click.Argument):
+            #             console.print(
+            #                 f"- [cyan]{param.name}[/cyan] ({type(param).__name__}): "
+            #                 f"(Argument; no description available)"
+            #             )
+            #         elif isinstance(param, click.Option):
+            #             console.print(
+            #                 f"- [cyan]{param.opts[0]}[/cyan] ({type(param).__name__}): "
+            #                 f"{param.help or 'No description available.'}"
+            #             )
         except Exception as e:
             # Log and notify the user of any help rendering errors
             LOG(f"Help rendering error: {e}")
