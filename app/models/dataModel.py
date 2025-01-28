@@ -14,7 +14,7 @@ Import these models to validate and structure data used in the application.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, NamedTuple
 from datetime import datetime
 from enum import Enum
 from pfmongo.models.responseModel import mongodbResponse
@@ -144,3 +144,9 @@ class DatabaseCollectionModel(BaseModel):
 
     database: str
     collection: str
+
+
+class ParseResult(NamedTuple):
+    text: str
+    error: Optional[str]
+    success: bool

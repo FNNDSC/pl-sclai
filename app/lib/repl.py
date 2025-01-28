@@ -12,6 +12,7 @@ import asyncio
 import sys
 from app.commands.app import cli
 from app.models.dataModel import CommandGroup
+from app.lib.parser import StringParser
 import shlex
 import inspect
 import pudb
@@ -22,7 +23,7 @@ from pfmongo.commands import smash
 from pfmongo import pfmongo
 
 console: Console = Console()
-
+parser: StringParser | None = None
 # Initialize the dynamic command group
 dynamic_commands: CommandGroup = CommandGroup(commands={})
 
@@ -30,6 +31,12 @@ dynamic_commands: CommandGroup = CommandGroup(commands={})
 async def prompt_get() -> str:
     prompt: str = await smash.prompt_get(pfmongo.options_initialize(), "sclai")
     return prompt
+
+
+async def init_parser() -> None:
+    global parser
+    if parser is None:
+        parser = StringParser()
 
 
 async def repl_start() -> None:
@@ -40,8 +47,13 @@ async def repl_start() -> None:
     This function handles user commands and gracefully terminates on <Ctrl-C> or '/exit'.
     """
     console.print(
-        "[bold cyan]Welcome to the SCLAI REPL. Type '/exit' to quit.[/bold cyan]\n"
+        """
+        [cyan]Welcome to the SCLAI REPL! 
+        [green]Type [white]/exit[green] to quit.
+
+        """
     )
+    await init_parser()
 
     while True:
         try:
@@ -57,10 +69,18 @@ async def repl_start() -> None:
                     return
                 continue  # Skip the simulated LLM response for valid commands
 
-            # Simulate LLM response
-            console.print(
-                "[bold yellow]LLM:[/bold yellow] Simulated response (placeholder)."
-            )
+            # Parse variables before LLM processing
+            if not parser:
+                break
+            parse_result = await parser.parse(user_input)
+            if not parse_result.success:
+                console.print(
+                    f"[bold red]Variable parsing error: {parse_result.error}[/bold red]"
+                )
+                continue
+
+            # Pass parsed text to LLM
+            console.print(f"[bold yellow]LLM:[/bold yellow] {parse_result.text}")
 
         except KeyboardInterrupt:
             # Notify the user and terminate the program immediately
