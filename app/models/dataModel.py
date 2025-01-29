@@ -8,6 +8,10 @@ Features:
 - Enum classes for message and logging types.
 - Models for MongoDB interaction results and default document structures.
 - Data structures for REPL commands and dynamic command groups.
+- Input processing results
+- Parsing results
+- Command processing
+- Database operations
 
 Usage:
 Import these models to validate and structure data used in the application.
@@ -150,15 +154,9 @@ class ParseResult(BaseModel):
     """Result of token parsing operation.
 
     Attributes:
-        text: The processed text after all token substitutions
-        error: Error message if any occurred during parsing, None if successful
-        success: Whether the parsing operation completed successfully
-
-    Example:
-        Successful parse:
-            ParseResult(text="processed text", error=None, success=True)
-        Failed parse:
-            ParseResult(text="", error="Variable not found: xyz", success=False)
+        text: The processed text after substitutions
+        error: Optional error message if parsing failed
+        success: Whether parsing succeeded
     """
 
     text: str
@@ -171,10 +169,44 @@ class InputResult(BaseModel):
 
     Attributes:
         text: The collected input text
-        continue_loop: Whether to continue the REPL loop
+        continue_loop: Whether to continue processing
         error: Optional error message if input collection failed
     """
 
     text: str
     continue_loop: bool
     error: str | None = None
+
+
+class ProcessResult(BaseModel):
+    """Result of command/input processing.
+
+    Attributes:
+        text: Processed output text or command output
+        is_command: Whether input was a command
+        should_exit: Whether to exit processing
+        error: Optional error message
+        success: Whether processing succeeded
+        exit_code: Exit code for non-interactive mode
+    """
+
+    text: str
+    is_command: bool
+    should_exit: bool
+    error: str | None = None
+    success: bool = True
+    exit_code: int = 0
+
+
+class InputMode(BaseModel):
+    """Input mode determination.
+
+    Attributes:
+        has_stdin: Whether stdin has content
+        ask_string: Direct query string if provided
+        use_repl: Whether to use interactive REPL
+    """
+
+    has_stdin: bool = False
+    ask_string: str | None = None
+    use_repl: bool = True
