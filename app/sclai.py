@@ -25,7 +25,7 @@ from app.config.settings import (
     config_update,
     databaseCollection_initialize,
 )
-from app.lib.repl import repl_start
+from app.lib.repl import repl_do
 import asyncio
 import signal
 from rich.console import Console
@@ -124,7 +124,7 @@ def main(options: Namespace, inputdir: Path, outputdir: Path) -> None:
                     console.print(f"[bold red]Error:[/bold red] {e}")
             else:
                 # Start the asynchronous REPL
-                await repl_start()
+                await repl_do()
 
         except Exception as e:
             LOG(f"Unhandled exception in async_main: {e}")
