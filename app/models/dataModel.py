@@ -146,7 +146,35 @@ class DatabaseCollectionModel(BaseModel):
     collection: str
 
 
-class ParseResult(NamedTuple):
+class ParseResult(BaseModel):
+    """Result of token parsing operation.
+
+    Attributes:
+        text: The processed text after all token substitutions
+        error: Error message if any occurred during parsing, None if successful
+        success: Whether the parsing operation completed successfully
+
+    Example:
+        Successful parse:
+            ParseResult(text="processed text", error=None, success=True)
+        Failed parse:
+            ParseResult(text="", error="Variable not found: xyz", success=False)
+    """
+
     text: str
-    error: Optional[str]
+    error: str | None
     success: bool
+
+
+class InputResult(BaseModel):
+    """Result of input collection operation.
+
+    Attributes:
+        text: The collected input text
+        continue_loop: Whether to continue the REPL loop
+        error: Optional error message if input collection failed
+    """
+
+    text: str
+    continue_loop: bool
+    error: str | None = None
