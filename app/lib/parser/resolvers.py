@@ -11,7 +11,8 @@ import json
 import os
 from app.lib.mongodb import db_contains
 from app.lib.log import LOG
-from app.models.dataModel import mongodbResponse, ParseResult
+from app.models.dataModel import mongodbResponse, ParseResult, DatabaseCollectionModel
+from app.commands.var import _ensure_connection as var_connect
 
 
 class VariableResolver:
@@ -32,8 +33,10 @@ class VariableResolver:
         Returns:
             ParseResult containing resolved value or error details
         """
+        connect: DatabaseCollectionModel = await var_connect()
+        msg: str = f"({connect.database}/{connect.collection}):"
         if self.current_depth >= self.max_depth or token_value in self.seen_vars:
-            msg: str = f"Max depth exceeded or circular reference: {token_value}"
+            msg += f"Max depth exceeded or circular reference: {token_value}"
             LOG(msg)
             return ParseResult(text="", error=msg, success=False)
 
@@ -52,12 +55,12 @@ class VariableResolver:
                 value: str | None = data.get("value")
 
                 if value is None:
-                    msg: str = f"No value found for variable: {token_value}"
+                    msg += f"No value found for variable: {token_value}"
                     LOG(msg)
                     return ParseResult(text="", error=msg, success=False)
 
                 if not isinstance(value, str):
-                    msg: str = f"Variable {token_value} value is not a string"
+                    msg += f"Variable {token_value} value is not a string"
                     LOG(msg)
                     return ParseResult(text="", error=msg, success=False)
 
@@ -76,7 +79,7 @@ class VariableResolver:
                 return ParseResult(text=value, error=None, success=True)
 
             except json.JSONDecodeError:
-                msg: str = f"Error decoding JSON for variable {token_value}"
+                msg += f"Error decoding JSON for variable {token_value}"
                 LOG(msg)
                 return ParseResult(text="", error=msg, success=False)
 

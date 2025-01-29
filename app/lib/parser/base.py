@@ -143,7 +143,7 @@ class BaseTokenParser:
         Note:
             Returns unmodified text if no tokens found
         """
-        if not self.token in text:
+        if self.token not in text:
             return text
 
         parts: list[str] = text.split(self.token)
