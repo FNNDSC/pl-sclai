@@ -13,7 +13,7 @@ Commands:
 
 from rich.console import Console
 import click
-from app.commands.base import RichGroup, RichCommand
+from app.commands.base import RichGroup, RichCommand, rich_help
 from app.lib.mongodb import db_init, db_docAdd, db_contains, db_docDel, db_showAll
 from app.models.dataModel import DocumentData, DatabaseCollectionModel, DbInitResult
 from app.lib.log import LOG
@@ -21,24 +21,6 @@ from pfmongo.models.responseModel import mongodbResponse
 import json
 
 console: Console = Console()
-
-
-def rich_help(command: str, description: str, usage: str, args: dict) -> str:
-    """
-    Generate Rich-enhanced help text for commands.
-
-    :param command: The command name.
-    :param description: Description of the command.
-    :param usage: Usage syntax for the command.
-    :param args: Dictionary of arguments and their descriptions.
-    :return: Formatted Rich help string.
-    """
-    help_text = f"[bold cyan]{description}[/bold cyan]\n\n"
-    help_text += f"[bold yellow]Usage:[/bold yellow]\n    [green]{usage}[/green]\n\n"
-    help_text += "[bold yellow]Arguments:[/bold yellow]\n"
-    for arg, desc in args.items():
-        help_text += f"    [green]{arg}[/green]: {desc}\n"
-    return help_text
 
 
 @click.group(
@@ -88,8 +70,8 @@ var: click.Group = var
         description="Set a user-defined variable.",
         usage="/var set <name> <value>",
         args={
-            "<name>": "The name of the variable to set.",
-            "<value>": "The value to assign to the variable.",
+            "<name>": "The (string) name of the variable to set.",
+            "<value>": "The (string) value to assign to the variable. Quote values that have spaces.",
         },
     ),
 )
