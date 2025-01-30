@@ -24,6 +24,24 @@ from app.lib.log import LOG
 console: Console = Console()
 
 
+def rich_help(command: str, description: str, usage: str, args: dict) -> str:
+    """
+    Generate Rich-enhanced help text for commands.
+
+    :param command: The command name.
+    :param description: Description of the command.
+    :param usage: Usage syntax for the command.
+    :param args: Dictionary of arguments and their descriptions.
+    :return: Formatted Rich help string.
+    """
+    help_text = f"[bold cyan]{description}[/bold cyan]\n\n"
+    help_text += f"[bold yellow]Usage:[/bold yellow]\n    [green]{usage}[/green]\n\n"
+    help_text += "[bold yellow]Arguments:[/bold yellow]\n"
+    for arg, desc in args.items():
+        help_text += f"    [green]{arg}[/green]: {desc}\n"
+    return help_text
+
+
 class RichGroup(click.Group):
     """
     A Click Group that uses Rich for rendering help messages with enhanced colorization.
