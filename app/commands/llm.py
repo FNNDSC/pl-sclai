@@ -11,7 +11,7 @@ Features:
 
 from rich.console import Console
 import click
-from app.commands.base import RichGroup, RichCommand
+from app.commands.base import RichGroup, RichCommand, rich_help  # Added rich_help
 
 console: Console = Console()
 
@@ -32,19 +32,17 @@ def llm() -> None:
     pass
 
 
-# Explicitly annotate `llm` as `click.Group` for type checking
 llm: click.Group = llm
 
 
 @llm.command(
     cls=RichCommand,
-    short_help="Connect to a locally managed LLM session database.",
-    help="""
-    Connect to an LLM MongoDB database.
-
-    Usage:
-        /llm connect <database_name>
-    """,
+    help=rich_help(
+        command="connect",
+        description="Connect to a locally managed LLM session database",
+        usage="/llm connect <database_name>",
+        args={"<database_name>": "Name of MongoDB database containing LLM sessions"},
+    ),
 )
 @click.argument("database_name", type=str)
 def connect(database_name: str) -> None:
