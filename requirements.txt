@@ -16,10 +16,11 @@ openai>=0.27.2
 # Testing dependencies
 pytest>=7.0.0          # Pytest framework for testing
 pytest-mock>=3.0.0     # Pytest plugin for mocking
+pytest-asyncio
 
 pydantic_settings
 pfmongo
 click
 click-help-colors
 rich
-
+fortune-python
