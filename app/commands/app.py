@@ -16,6 +16,7 @@ from app.commands.base import RichGroup
 from app.commands.mongo import mongo
 from app.commands.llm import llm
 from app.commands.var import var
+from app.commands.fortune import fortune
 
 console: Console = Console()
 
@@ -42,6 +43,7 @@ cli: click.Group = cli
 cli.add_command(mongo)
 cli.add_command(llm)
 cli.add_command(var)
+cli.add_command(fortune)
 
 # Export the `cli` group for use in other modules
 cli_group: click.Group = cli
