@@ -19,8 +19,9 @@ Processing order:
 """
 
 import asyncio
+import os
 import sys
-from typing import Final
+from typing import Final, Optional
 from rich.console import Console
 from app.lib.parser import BaseTokenParser, VariableResolver, FileResolver
 from app.models.dataModel import ParseResult, ProcessResult, InputResult, InputMode
@@ -29,12 +30,61 @@ from pfmongo.commands import smash
 from pfmongo import pfmongo
 from app.lib.log import LOG
 import pudb
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.formatted_text import ANSI
+from pathlib import Path
+import readline
+
 
 console: Final[Console] = Console()
 
 # Initialize parsers
 variable_parser: BaseTokenParser | None = None
 file_parser: BaseTokenParser | None = None
+
+HISTORY_FILE: Final[str] = str(Path.home() / ".sclai_history")
+HISTORY_LENGTH: Final[int] = 1000
+
+
+class REPLSession:
+    """Manages REPL input session with history support."""
+
+    def __init__(self) -> None:
+        try:
+            self.history: list[str] = []
+            self.session: Optional[PromptSession] = None
+            self._setup_readline()
+            self._setup_prompt_session()
+        except Exception as e:
+            print(f"Session init failed: {e}")
+            raise
+
+    def _setup_readline(self) -> None:
+        """Configure readline with history and key bindings."""
+        if os.path.exists(HISTORY_FILE):
+            readline.read_history_file(HISTORY_FILE)
+
+        readline.set_history_length(HISTORY_LENGTH)
+        readline.parse_and_bind("set editing-mode emacs")
+        readline.parse_and_bind('"\x1b[A": previous-history')
+        readline.parse_and_bind('"\x1b[B": next-history')
+
+    def _setup_prompt_session(self) -> None:
+        """Initialize prompt toolkit session."""
+        self.session = PromptSession(
+            history=FileHistory(HISTORY_FILE),
+            enable_history_search=True,
+            complete_while_typing=True,
+        )
+
+    def save_history(self) -> None:
+        """Save current history to file."""
+        readline.write_history_file(HISTORY_FILE)
+
+
+# Global session instance
+repl_session: Optional[REPLSession] = None
 
 
 async def parsers_init() -> None:
@@ -59,28 +109,73 @@ async def parsers_init() -> None:
 
 async def input_get() -> InputResult:
     """Get user input with prompt.
-
     Returns:
         InputResult containing:
             - text: The user input text
             - continue_loop: Whether to continue processing
             - error: Any error message if input failed
-
     Note:
         Handles prompt generation and empty input validation
+        Uses REPLSession for command history and editing
+        Supports:
+        - Up/down arrow navigation
+        - Command history persistence
+        - Empty input handling
+        - Interrupt signal handling
+    Raises:
+        RuntimeError: If session is not initialized
+        KeyboardInterrupt: On Ctrl-C
     """
+    global repl_session
     try:
+        if not repl_session:
+            repl_session = REPLSession()
+
         prompt: str = await smash.prompt_get(pfmongo.options_initialize(), "sclai")
-        user_input: str = await asyncio.to_thread(input, f"{prompt} ")
+        user_input: str = await repl_session.session.prompt_async(ANSI(f"{prompt} "))
         user_input = user_input.strip()
 
         if not user_input:
             return InputResult(text="", continue_loop=True)
 
+        repl_session.save_history()
         return InputResult(text=user_input, continue_loop=True)
 
     except KeyboardInterrupt:
         return InputResult(text="", continue_loop=False, error="Interrupt received")
+    except Exception as e:
+        return InputResult(text="", continue_loop=False, error=f"Input error: {e}")
+
+
+# async def input_get() -> InputResult:
+#     """Get user input with prompt and history support.
+#
+#     Returns:
+#         InputResult containing:
+#             - text: The user input text
+#             - continue_loop: Whether to continue processing
+#             - error: Any error message if input failed
+#
+#     Features:
+#     - Command history persistence
+#     - Arrow key navigation
+#     - Empty input handling
+#     - Interrupt signal handling
+#     """
+#     try:
+#         prompt: str = await smash.prompt_get(pfmongo.options_initialize(), "sclai")
+#         user_input: str = await asyncio.to_thread(input, f"{prompt} ")
+#         user_input = user_input.strip()
+#
+#         if not user_input:
+#             return InputResult(text="", continue_loop=True)
+#
+#         readline.add_history(user_input)
+#         readline.write_history_file(HISTORY_FILE)
+#
+#         return InputResult(text=user_input, continue_loop=True)
+#     except KeyboardInterrupt:
+#         return InputResult(text="", continue_loop=False, error="Interrupt received")
 
 
 async def mode_detect(ask_string: str | None = None) -> InputMode:
