@@ -10,8 +10,10 @@ This module provides the REPL (Read-Eval-Print Loop) interface, managing:
 """
 
 from rich.console import Console
-from typing import Final
+from typing import Final, Optional
 from app.lib.input import input_get, input_handle
+from app.lib.log import LOG
+from app.models.dataModel import InputResult
 
 console: Final[Console] = Console()
 
