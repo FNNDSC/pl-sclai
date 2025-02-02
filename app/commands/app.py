@@ -1,6 +1,5 @@
 """
 Defines the main Click command group for the SCLAI application.
-
 This module provides:
 - The root `cli` command group for the application.
 - Integration with Rich-enhanced Click classes (`RichGroup`).
@@ -24,16 +23,26 @@ console: Console = Console()
 @click.group(
     cls=RichGroup,
     help="""
-    SCLAI Command Palette
-
-    Manage backend operations with subcommands.
-    """,
+   SCLAI Command Palette
+   Manage backend operations with subcommands.
+   """,
 )
-def cli() -> None:
+@click.pass_context
+def cli(ctx: click.Context) -> None:
+    """The root Click command group for SCLAI.
+
+    Args:
+        ctx: Click context object for sharing state between commands.
+            Initialized with cli group reference for dynamic registration.
+
+    Note:
+        Initializes command context and registers core subcommands:
+        - mongo: Database operations
+        - llm: Language model management
+        - var: Variable operations
+        - fortune: System information
     """
-    The root Click command group for SCLAI.
-    """
-    pass
+    ctx.obj = {"cli": cli}
 
 
 # Explicitly annotate `cli` as `click.Group` for static type checking
