@@ -51,7 +51,7 @@ async def tell() -> None:
     """
     try:
         tell: str = fate()
-        print(tell)
+        console.print(tell)
 
     except Exception as e:
         LOG(f"error calling fortune {e}")
