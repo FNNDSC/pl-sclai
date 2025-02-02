@@ -26,7 +26,7 @@ from app.models.dataModel import (
 )
 from app.lib.log import LOG
 from app.lib.mongodb import db_init, db_contains, db_docAdd
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pfmongo.models.responseModel import mongodbResponse
 
 # Base directory for local fallback storage
@@ -84,21 +84,11 @@ class App(BaseSettings):
         _, database, collection = dbcollection.split("/")
         return DatabaseCollectionModel(database=database, collection=collection)
 
-    class Config:
-        """
-        Configuration for Pydantic settings.
-
-        Attributes:
-            env_prefix (str): The prefix for environment variables.
-            case_sensitive (bool): Whether environment variable names are case-sensitive.
-        """
-
-        env_prefix: str = (
-            "SCL_"  # Matches environment variables with this prefix to the settings
-        )
-        case_sensitive: bool = (
-            False  # Allows case-insensitive matching of environment variables
-        )
+    model_config = SettingsConfigDict(
+        env_prefix="SCL_",  # Matches environment variables with this prefix
+        case_sensitive=False,  # Allows case-insensitive matching of environment variables
+        extra="allow",
+    )
 
 
 def validate_json(data: dict[str, Any]) -> bool:
