@@ -17,7 +17,7 @@ Usage:
 Import these models to validate and structure data used in the application.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Any, Dict, NamedTuple
 from datetime import datetime
 from enum import Enum
@@ -95,16 +95,10 @@ class CommandGroup(BaseModel):
         commands (dict[str, click.Group]): A dictionary mapping command names to their associated Click groups.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     commands: Dict[str, click.Group] = Field(
         ..., description="Mapping of command names to Click groups."
     )
-
-    class Config:
-        """
-        Pydantic model configuration.
-        """
-
-        arbitrary_types_allowed = True
 
 
 class DbInitResult(BaseModel):
