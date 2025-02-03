@@ -20,8 +20,13 @@ from typing import Callable
 from rich.console import Console
 import click
 from app.commands.base import RichGroup, RichCommand, rich_help
+from app.lib.router import Router
+from app.lib.handlers import LLMKeyHandler
+from app.models.dataModel import RouteModel, Action
 
 console: Console = Console()
+
+router = Router()
 
 
 @dataclass
@@ -40,16 +45,32 @@ class LLMProvider:
 llm_providers: dict[str, LLMProvider] = {}
 
 
+async def handle_key_command(
+    provider: str, action: Action, value: str | None = None
+) -> None:
+    route = RouteModel(command=provider, context="key", action=action, value=value)
+    result = await router.dispatch(route)
+    if action == Action.GET:
+        console.print(f"[yellow]API Key: {result}[/yellow]")
+
+
 async def show_key(provider: str) -> None:
     """Show API key for provider.
 
     Args:
-        provider: Name of LLM provider
+        provider: Name of LLM provider (e.g. 'openai', 'claude')
+
+    Raises:
+        RuntimeError: If key retrieval fails
+        ValueError: If provider not found
 
     Note:
-        Keys should be retrieved from secure storage
+        Keys are retrieved from MongoDB llm/keys collection
+        Provider name is used as document ID
     """
-    console.print(f"[yellow]Showing key for {provider}[/yellow]")
+    route = RouteModel(provider, "key", Action.GET, None)
+    result = await router.dispatch(route)
+    console.print(f"[yellow]API Key for {provider}: {result}[/yellow]")
 
 
 async def set_key(provider: str, key: str) -> None:
@@ -59,9 +80,17 @@ async def set_key(provider: str, key: str) -> None:
         provider: Name of LLM provider
         key: API key to store
 
+    Raises:
+        RuntimeError: If storage fails
+        ValueError: If key invalid or provider not found
+
     Note:
-        Keys should be stored securely
+        Keys are stored in MongoDB llm/keys collection
+        Provider name is used as document ID
+        Existing keys are overwritten
     """
+    route = RouteModel(provider, "key", Action.SET, key)
+    await router.dispatch(route)
     console.print(f"[green]Key set for {provider}[/green]")
 
 
@@ -178,6 +207,11 @@ async def connect(ctx: click.Context, provider_name: str) -> None:
         name=provider_name, commands={"show": show_key, "set": set_key}
     )
     llm_providers[provider_name] = provider
+
+    # Register route handler
+    handler = LLMKeyHandler(provider_name)
+    router.register(provider_name, "key", handler)
+
     if "cli" in ctx.obj:
         register_provider_commands(provider, ctx.obj["cli"])
     console.print(f"[green]Connected to {provider_name}[/green]")
