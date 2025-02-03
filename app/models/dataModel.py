@@ -18,11 +18,12 @@ Import these models to validate and structure data used in the application.
 """
 
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Any, Dict, NamedTuple
+from typing import Optional, Any, Dict, NamedTuple, Protocol
 from datetime import datetime
 from enum import Enum
 from pfmongo.models.responseModel import mongodbResponse
 import click
+from dataclasses import dataclass
 
 
 class MessageType(Enum):
@@ -204,3 +205,92 @@ class InputMode(BaseModel):
     has_stdin: bool = False
     ask_string: str | None = None
     use_repl: bool = True
+
+
+"""Data models for the command routing system."""
+from dataclasses import dataclass
+from typing import Protocol, Any
+from enum import Enum
+
+
+class Action(Enum):
+    """Command action types.
+
+    Attributes:
+        GET: Retrieve data
+        SET: Store/update data
+    """
+
+    GET = "get"
+    SET = "set"
+
+
+@dataclass
+class RouteKey:
+    """Route identification key.
+
+    Attributes:
+        command: Primary command (e.g. 'openai', 'prompt')
+        context: Command context (e.g. 'key', 'persistent')
+
+    Example:
+        RouteKey('openai', 'key') -> Maps to openai key handler
+    """
+
+    command: str
+    context: str
+
+
+@dataclass
+class RouteModel:
+    """Route data model.
+
+    Attributes:
+        command: Primary command identifier
+        context: Command context identifier
+        action: GET or SET operation
+        value: Data for SET operations, None for GET
+
+    Example:
+        RouteModel('openai', 'key', Action.SET, 'abc123')
+    """
+
+    command: str
+    context: str
+    action: Action
+    value: str | None
+
+
+class RouteHandler(Protocol):
+    """Protocol for command route handlers.
+
+    Handlers must implement:
+        get(): Retrieve data
+        set(): Store data
+
+    Note:
+        Protocol ensures type safety for handler registration
+    """
+
+    async def get(self) -> Any:
+        """Retrieve data for this route.
+
+        Returns:
+            Retrieved data in appropriate type
+
+        Raises:
+            NotImplementedError: If handler doesn't support GET
+        """
+        ...
+
+    async def set(self, value: Any) -> None:
+        """Store data for this route.
+
+        Args:
+            value: Data to store
+
+        Raises:
+            NotImplementedError: If handler doesn't support SET
+            ValueError: If value is invalid
+        """
+        ...
