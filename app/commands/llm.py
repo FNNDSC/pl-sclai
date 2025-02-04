@@ -22,7 +22,8 @@ import click
 from app.commands.base import RichGroup, RichCommand, rich_help
 from app.lib.router import Router
 from app.lib.handlers import LLMKeyHandler
-from app.models.dataModel import RouteModel, Action
+from app.models.dataModel import Action, RouteMapper
+import pudb
 
 console: Console = Console()
 
@@ -48,7 +49,7 @@ llm_providers: dict[str, LLMProvider] = {}
 async def handle_key_command(
     provider: str, action: Action, value: str | None = None
 ) -> None:
-    route = RouteModel(command=provider, context="key", action=action, value=value)
+    route = RouteMapper(command=provider, context="key", action=action, value=value)
     result = await router.dispatch(route)
     if action == Action.GET:
         console.print(f"[yellow]API Key: {result}[/yellow]")
@@ -68,7 +69,7 @@ async def show_key(provider: str) -> None:
         Keys are retrieved from MongoDB llm/keys collection
         Provider name is used as document ID
     """
-    route = RouteModel(provider, "key", Action.GET, None)
+    route = RouteMapper(provider, "key", Action.GET, None)
     result = await router.dispatch(route)
     console.print(f"[yellow]API Key for {provider}: {result}[/yellow]")
 
@@ -89,7 +90,7 @@ async def set_key(provider: str, key: str) -> None:
         Provider name is used as document ID
         Existing keys are overwritten
     """
-    route = RouteModel(provider, "key", Action.SET, key)
+    route = RouteMapper(provider, "key", Action.SET, key)
     await router.dispatch(route)
     console.print(f"[green]Key set for {provider}[/green]")
 
@@ -203,6 +204,7 @@ async def connect(ctx: click.Context, provider_name: str) -> None:
         Creates provider instance and registers commands
         Provider remains active until session end
     """
+    pudb.set_trace()
     provider = LLMProvider(
         name=provider_name, commands={"show": show_key, "set": set_key}
     )
