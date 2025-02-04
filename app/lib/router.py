@@ -18,13 +18,13 @@ Features:
 """
 
 from typing import Any
-from app.models.dataModel import RouteKey, RouteModel, RouteHandler, Action
+from app.models.dataModel import RouteContext, RouteMapper, RouteHandler, Action
 
 
 class Router:
     def __init__(self) -> None:
         """Initialize empty route registry."""
-        self._routes: dict[RouteKey, RouteHandler] = {}
+        self._routes: dict[RouteContext, RouteHandler] = {}
 
     def register(self, command: str, context: str, handler: RouteHandler) -> None:
         """Register handler for command/context pair.
@@ -37,12 +37,12 @@ class Router:
         Raises:
             ValueError: If route already registered
         """
-        key = RouteKey(command, context)
-        if key in self._routes:
+        path: RouteContext = RouteContext(command, context)
+        if path in self._routes:
             raise ValueError(f"Handler already registered for {command}/{context}")
         self._routes[key] = handler
 
-    async def dispatch(self, route: RouteModel) -> Any:
+    async def dispatch(self, route: RouteMapper) -> Any:
         """Dispatch command to appropriate handler.
 
         Args:
@@ -55,11 +55,11 @@ class Router:
             ValueError: If no handler found
             RuntimeError: If handler operation fails
         """
-        key = RouteKey(route.command, route.context)
-        if key not in self._routes:
+        path: RouteContext = RouteContext(route.command, route.context)
+        if path not in self._routes:
             raise ValueError(f"No handler for {route.command}/{route.context}")
 
-        handler = self._routes[key]
+        handler = self._routes[path]
         try:
             if route.action == Action.GET:
                 return await handler.get()
