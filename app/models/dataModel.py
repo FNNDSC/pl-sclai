@@ -207,12 +207,6 @@ class InputMode(BaseModel):
     use_repl: bool = True
 
 
-"""Data models for the command routing system."""
-from dataclasses import dataclass
-from typing import Protocol, Any
-from enum import Enum
-
-
 class Action(Enum):
     """Command action types.
 
@@ -226,15 +220,22 @@ class Action(Enum):
 
 
 @dataclass
-class RouteKey:
-    """Route identification key.
+class RouteContext:
+    """Route Context.
+    Primarily used to contextualize a command/context to a mongodb
+    database and collection.
 
     Attributes:
         command: Primary command (e.g. 'openai', 'prompt')
         context: Command context (e.g. 'key', 'persistent')
 
     Example:
-        RouteKey('openai', 'key') -> Maps to openai key handler
+        * The sclai command string "/openai prompt persist get"
+          has a context using this model of:
+          command = openai
+          context = prompt
+
+        * RouteKey('openai', 'key') -> Maps to openai key handler
     """
 
     command: str
@@ -242,21 +243,23 @@ class RouteKey:
 
 
 @dataclass
-class RouteModel:
-    """Route data model.
+class RouteMapper(RouteContext):
+    """Route mapper model.
 
     Attributes:
-        command: Primary command identifier
-        context: Command context identifier
+        routeContext: Route context (base class)
         action: GET or SET operation
         value: Data for SET operations, None for GET
 
     Example:
-        RouteModel('openai', 'key', Action.SET, 'abc123')
+        * /openai key set abc123
+        is a RouteMapper of:
+            command = "openai"
+            context = "key"
+            action = "Action.SET"
+            value = "abc123"
     """
 
-    command: str
-    context: str
     action: Action
     value: str | None
 
@@ -272,7 +275,7 @@ class RouteHandler(Protocol):
         Protocol ensures type safety for handler registration
     """
 
-    async def get(self) -> Any:
+    async def get(self) -> str | None:
         """Retrieve data for this route.
 
         Returns:
@@ -283,7 +286,7 @@ class RouteHandler(Protocol):
         """
         ...
 
-    async def set(self, value: Any) -> None:
+    async def set(self, value: str) -> str | None:
         """Store data for this route.
 
         Args:
