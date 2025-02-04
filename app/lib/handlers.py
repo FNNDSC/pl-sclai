@@ -16,9 +16,11 @@ Example:
 """
 
 from typing import Any
-from app.models.dataModel import RouteHandler
-from pfmongo import pfmongo
-from pfmongo.commands import smash
+from typing_extensions import Doc
+from app.models.dataModel import DocumentData, RouteHandler, DatabaseCollectionModel, DbInitResult
+from app.lib.mongodb import db_contains, db_init, db_docAdd
+from pfmongo.models.responseModel import mongodbResponse
+import json
 
 
 class BaseHandler(RouteHandler):
@@ -38,26 +40,40 @@ class BaseHandler(RouteHandler):
         self.collection = collection
         self.document = document
 
-    async def get(self) -> Any:
+    async def connect(self) -> DbInitResult | None
+        db_connect: DbInitResult = await db_init(
+                DatabaseCollectionModel(database = self.database, collection = self.collection)
+        )
+        if not db_connect.db_response.status or not db_connect.col_response.status:
+            return None
+        return db_connect
+
+    async def get(self) -> str | None:
         """Get value from MongoDB.
 
         Returns:
-            Stored value
+            Stored value or None 
 
-        Raises:
-            RuntimeError: If retrieval fails
         """
-        try:
-            options = pfmongo.options_initialize(
-                database=self.database, collection=self.collection
-            )
-            if self.document:
-                options["document"] = self.document
-            return await smash.show_get(options)
-        except Exception as e:
-            raise RuntimeError(f"Failed to get value: {e}")
+        db_connect: DbInitResult | None = await self.connect()
+        if not db_connect:
+            return None
+        if not self.document
+            return None
+        result: mongodbResponse = await db_contains(self.document)
+        message_data = json.loads(result.message)
+        value: str = message_data.get("value", result.message)
+        return value 
 
-    async def set(self, value: Any) -> None:
+    def package(self, data: str) -> DocumentData | None:
+        if not self.document:
+            return None
+        document_data: DocumentData = DocumentData(
+            data={"name": self.document, "value": data}, id=self.document
+        )
+        return document_data
+
+    async def set(self, value: str) -> str | None:
         """Store value in MongoDB.
 
         Args:
@@ -69,25 +85,25 @@ class BaseHandler(RouteHandler):
         """
         if not value:
             raise ValueError("Value cannot be empty")
+        db_connect: DbInitResult | None = await self.connect()
+        if not db_connect:
+            return None
+        payload: DocumentData | None = self.package(value)
+        if not payload:
+            return None
+        add: mongodbResponse = await db_docAdd(payload)
+        if not add.status:
+            return None
+        return value
 
-        try:
-            options = pfmongo.options_initialize(
-                database=self.database, collection=self.collection
-            )
-            if self.document:
-                options["document"] = self.document
-            await smash.show_set(options, value)
-        except Exception as e:
-            raise RuntimeError(f"Failed to set value: {e}")
 
+class LLMAccessorHandler(BaseHandler):
+    """Handler for LLM API Accessor management."""
 
-class LLMKeyHandler(BaseHandler):
-    """Handler for LLM API key management."""
-
-    def __init__(self, provider: str) -> None:
+    def __init__(self, provider: str, entry: str) -> None:
         """Initialize handler for specific LLM provider.
 
         Args:
             provider: LLM provider name (e.g. 'openai', 'claude')
         """
-        super().__init__(database="llm", collection="keys", document=provider)
+        super().__init__(database=provider, collection="settings", document=entry)
