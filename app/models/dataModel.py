@@ -218,6 +218,10 @@ class Action(Enum):
     GET = "get"
     SET = "set"
 
+class Trait(Enum):
+    KEY = "key"
+    SESSION = "session"
+
 
 @dataclass
 class RouteContext:
