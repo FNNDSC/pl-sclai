@@ -19,6 +19,7 @@ Features:
 
 from typing import Any
 from app.models.dataModel import RouteContext, RouteMapper, RouteHandler, Action
+import pudb
 
 
 class Router:
@@ -40,9 +41,9 @@ class Router:
         path: RouteContext = RouteContext(command, context)
         if path in self._routes:
             raise ValueError(f"Handler already registered for {command}/{context}")
-        self._routes[key] = handler
+        self._routes[path] = handler
 
-    async def dispatch(self, route: RouteMapper) -> Any:
+    async def dispatch(self, route: RouteMapper) -> str | None:
         """Dispatch command to appropriate handler.
 
         Args:
@@ -58,11 +59,14 @@ class Router:
         path: RouteContext = RouteContext(route.command, route.context)
         if path not in self._routes:
             raise ValueError(f"No handler for {route.command}/{route.context}")
+        pudb.set_trace()
 
         handler = self._routes[path]
         try:
             if route.action == Action.GET:
                 return await handler.get()
+            if not route.value:
+                return None
             return await handler.set(route.value)
         except Exception as e:
             raise RuntimeError(f"Handler operation failed: {e}")
