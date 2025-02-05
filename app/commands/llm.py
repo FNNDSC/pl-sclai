@@ -22,7 +22,7 @@ import click
 from app.commands.base import RichGroup, RichCommand, rich_help
 from app.lib.router import Router
 from app.lib.handlers import LLMAccessorHandler
-from app.models.dataModel import Action, RouteMapper
+from app.models.dataModel import Action, RouteMapper, Trait
 import pudb
 
 console: Console = Console()
@@ -46,7 +46,14 @@ class LLMProvider:
 llm_providers: dict[str, LLMProvider] = {}
 
 
-# async def accessor_handle(provider:str, action: Action, trait:  )
+async def accessor_handle(
+    provider: str, action: Action, trait: Trait, value: str | None = None
+) -> str | None:
+    route: RouteMapper = RouteMapper(
+        command=provider, context=Trait.KEY, action=action, value=value
+    )
+    result: str | None = await router.disptch(route)
+    return result
 
 
 async def handle_key_command(
