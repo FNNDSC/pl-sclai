@@ -218,6 +218,7 @@ class Action(Enum):
     GET = "get"
     SET = "set"
 
+
 class Trait(Enum):
     KEY = "key"
     SESSION = "session"
@@ -243,26 +244,12 @@ class RouteContext:
     """
 
     command: str
-    context: str
+    context: Trait
 
 
 @dataclass
 class RouteMapper(RouteContext):
-    """Route mapper model.
-
-    Attributes:
-        routeContext: Route context (base class)
-        action: GET or SET operation
-        value: Data for SET operations, None for GET
-
-    Example:
-        * /openai key set abc123
-        is a RouteMapper of:
-            command = "openai"
-            context = "key"
-            action = "Action.SET"
-            value = "abc123"
-    """
+    """Route mapper model."""
 
     action: Action
     value: str | None
