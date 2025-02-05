@@ -89,7 +89,7 @@ class BaseHandler(RouteHandler):
         if not db_connect:
             return None
         payload: DocumentData | None = self.package(value)
-        if not payload:
+        if not payload: ffdata
             return None
         add: mongodbResponse = await db_docAdd(payload)
         if not add.status:
@@ -100,10 +100,10 @@ class BaseHandler(RouteHandler):
 class LLMAccessorHandler(BaseHandler):
     """Handler for LLM API Accessor management."""
 
-    def __init__(self, provider: str, entry: str) -> None:
+    def __init__(self, provider: str, trait: str) -> None:
         """Initialize handler for specific LLM provider.
 
         Args:
             provider: LLM provider name (e.g. 'openai', 'claude')
         """
-        super().__init__(database=provider, collection="settings", document=entry)
+        super().__init__(database=provider, collection="settings", document=trait)
