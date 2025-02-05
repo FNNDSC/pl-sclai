@@ -58,7 +58,7 @@ class BaseHandler(RouteHandler):
         db_connect: DbInitResult | None = await self.connect()
         if not db_connect:
             return None
-        if not self.document
+        if not self.document 
             return None
         result: mongodbResponse = await db_contains(self.document)
         message_data = json.loads(result.message)
@@ -89,7 +89,7 @@ class BaseHandler(RouteHandler):
         if not db_connect:
             return None
         payload: DocumentData | None = self.package(value)
-        if not payload: ffdata
+        if not payload: 
             return None
         add: mongodbResponse = await db_docAdd(payload)
         if not add.status:
