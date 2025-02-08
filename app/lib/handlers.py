@@ -17,8 +17,14 @@ Example:
 
 from typing import Any
 from typing_extensions import Doc
-from app.models.dataModel import DocumentData, RouteHandler, DatabaseCollectionModel, DbInitResult
+from app.models.dataModel import (
+    DocumentData,
+    RouteHandler,
+    DatabaseCollectionModel,
+    DbInitResult,
+)
 from app.lib.mongodb import db_contains, db_init, db_docAdd
+from app.models.dataModel import Trait
 from pfmongo.models.responseModel import mongodbResponse
 import json
 
@@ -27,7 +33,7 @@ class BaseHandler(RouteHandler):
     """Base route handler with MongoDB storage."""
 
     def __init__(
-        self, database: str, collection: str, document: str | None = None
+        self, database: str, collection: str, document: Trait | None = None
     ) -> None:
         """Initialize handler with storage location.
 
@@ -38,11 +44,14 @@ class BaseHandler(RouteHandler):
         """
         self.database = database
         self.collection = collection
-        self.document = document
+        if document:
+            self.document = document.value
+        else:
+            self.document = None
 
-    async def connect(self) -> DbInitResult | None
+    async def connect(self) -> DbInitResult | None:
         db_connect: DbInitResult = await db_init(
-                DatabaseCollectionModel(database = self.database, collection = self.collection)
+            DatabaseCollectionModel(database=self.database, collection=self.collection)
         )
         if not db_connect.db_response.status or not db_connect.col_response.status:
             return None
@@ -52,18 +61,17 @@ class BaseHandler(RouteHandler):
         """Get value from MongoDB.
 
         Returns:
-            Stored value or None 
-
+            Stored value or None
         """
         db_connect: DbInitResult | None = await self.connect()
         if not db_connect:
             return None
-        if not self.document 
+        if not self.document:
             return None
         result: mongodbResponse = await db_contains(self.document)
         message_data = json.loads(result.message)
         value: str = message_data.get("value", result.message)
-        return value 
+        return value
 
     def package(self, data: str) -> DocumentData | None:
         if not self.document:
@@ -89,7 +97,7 @@ class BaseHandler(RouteHandler):
         if not db_connect:
             return None
         payload: DocumentData | None = self.package(value)
-        if not payload: 
+        if not payload:
             return None
         add: mongodbResponse = await db_docAdd(payload)
         if not add.status:
@@ -100,8 +108,9 @@ class BaseHandler(RouteHandler):
 class LLMAccessorHandler(BaseHandler):
     """Handler for LLM API Accessor management."""
 
-    def __init__(self, provider: str, trait: str) -> None:
-        """Initialize handler for specific LLM provider.
+    def __init__(self, provider: str, trait: Trait) -> None:
+        """Initialize handler for specific LLM provider
+
 
         Args:
             provider: LLM provider name (e.g. 'openai', 'claude')
