@@ -18,7 +18,7 @@ Import these models to validate and structure data used in the application.
 """
 
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Any, Dict, NamedTuple, Protocol
+from typing import Optional, Any, Dict, NamedTuple, Protocol, Callable
 from datetime import datetime
 from enum import Enum
 from pfmongo.models.responseModel import mongodbResponse
@@ -207,7 +207,7 @@ class InputMode(BaseModel):
     use_repl: bool = True
 
 
-class Action(Enum):
+class Accessor(Enum):
     """Command action types.
 
     Attributes:
@@ -225,7 +225,7 @@ class Trait(Enum):
 
 
 @dataclass
-class RouteContext:
+class RouteContextModel:
     """Route Context.
     Primarily used to contextualize a command/context to a mongodb
     database and collection.
@@ -248,10 +248,10 @@ class RouteContext:
 
 
 @dataclass
-class RouteMapper(RouteContext):
+class RouteMapperModel(RouteContextModel):
     """Route mapper model."""
 
-    action: Action
+    accessor: Accessor
     value: str | None
 
 
@@ -288,3 +288,16 @@ class RouteHandler(Protocol):
             ValueError: If value is invalid
         """
         ...
+
+
+@dataclass
+class LLMProviderModel:
+    """LLM provider configuration and command mapping.
+
+    Args:
+        name: Provider identifier (e.g., 'openai', 'claude')
+        commands: Mapping of command names to handler functions
+    """
+
+    name: str
+    commands: dict[str, Callable]
