@@ -22,7 +22,7 @@ import click
 from app.commands.base import RichGroup, RichCommand, rich_help
 from app.lib.router import Router
 from app.lib.handlers import LLMAccessorHandler
-from app.models.dataModel import Action, RouteMapper, Trait
+from app.models.dataModel import Accessor, RouteMapperModel, LLMProviderModel, Trait
 import pudb
 
 console: Console = Console()
@@ -30,38 +30,27 @@ console: Console = Console()
 router = Router()
 
 
-@dataclass
-class LLMProvider:
-    """LLM provider configuration and command mapping.
-
-    Args:
-        name: Provider identifier (e.g., 'openai', 'claude')
-        commands: Mapping of command names to handler functions
-    """
-
-    name: str
-    commands: dict[str, Callable]
-
-
-llm_providers: dict[str, LLMProvider] = {}
+llm_providers: dict[str, LLMProviderModel] = {}
 
 
 async def accessor_handle(
-    provider: str, action: Action, trait: Trait, value: str | None = None
+    provider: str, action: Accessor, trait: Trait, value: str | None = None
 ) -> str | None:
-    route: RouteMapper = RouteMapper(
-        command=provider, context=Trait.KEY, action=action, value=value
+    route: RouteMapperModel = RouteMapperModel(
+        command=provider, context=trait, accessor=action, value=value
     )
     result: str | None = await router.disptch(route)
     return result
 
 
 async def handle_key_command(
-    provider: str, action: Action, value: str | None = None
+    provider: str, action: Accessor, value: str | None = None
 ) -> None:
-    route = RouteMapper(command=provider, context="key", action=action, value=value)
+    route = RouteMapperModel(
+        command=provider, context=Trait.KEY, accessor=action, value=value
+    )
     result = await router.dispatch(route)
-    if action == Action.GET:
+    if action == Accessor.GET:
         console.print(f"[yellow]API Key: {result}[/yellow]")
 
 
@@ -79,7 +68,7 @@ async def show_key(provider: str) -> None:
         Keys are retrieved from MongoDB llm/keys collection
         Provider name is used as document ID
     """
-    route = RouteMapper(provider, "key", Action.GET, None)
+    route = RouteMapperModel(provider, Trait.KEY, Accessor.GET, None)
     result = await router.dispatch(route)
     console.print(f"[yellow]API Key for {provider}: {result}[/yellow]")
 
@@ -100,12 +89,13 @@ async def set_key(provider: str, key: str) -> None:
         Provider name is used as document ID
         Existing keys are overwritten
     """
-    route = RouteMapper(provider, "key", Action.SET, key)
+    # pudb.set_trace()
+    route = RouteMapperModel(provider, Trait.KEY, Accessor.SET, key)
     await router.dispatch(route)
     console.print(f"[green]Key set for {provider}[/green]")
 
 
-def register_provider_commands(provider: LLMProvider, cli: click.Group) -> None:
+def register_provider_commands(provider: LLMProviderModel, cli: click.Group) -> None:
     """Register dynamic commands for an LLM provider.
 
     Creates command group and subcommands for provider:
@@ -152,9 +142,10 @@ def register_provider_commands(provider: LLMProvider, cli: click.Group) -> None:
             args={"<None>": "no arguments"},
         ),
     )
-    async def show() -> None:
+    async def get() -> str:
         """Show current API key."""
-        await provider.commands["show"](provider.name)
+        value: str = await provider.commands[Accessor.GET.value](provider.name)
+        return value
 
     @key.command(
         cls=RichCommand,
@@ -166,9 +157,11 @@ def register_provider_commands(provider: LLMProvider, cli: click.Group) -> None:
         ),
     )
     @click.argument("value", type=str)
-    async def set(value: str) -> None:
+    async def set(value: str) -> str:
         """Set API key value."""
-        await provider.commands["set"](provider.name, value)
+        pudb.set_trace()
+        set: str = await provider.commands[Accessor.SET.value](provider.name, value)
+        return set
 
     cli.add_command(provider_group, name=provider.name)
 
@@ -214,15 +207,16 @@ async def connect(ctx: click.Context, provider_name: str) -> None:
         Creates provider instance and registers commands
         Provider remains active until session end
     """
-    pudb.set_trace()
-    provider = LLMProvider(
-        name=provider_name, commands={"show": show_key, "set": set_key}
+    # pudb.set_trace()
+    provider = LLMProviderModel(
+        name=provider_name,
+        commands={Accessor.GET.value: show_key, Accessor.SET.value: set_key},
     )
     llm_providers[provider_name] = provider
 
-    # Register route handler
-    handler = LLMKeyHandler(provider_name)
-    router.register(provider_name, "key", handler)
+    # Register route handlers
+    keyHandler: LLMAccessorHandler = LLMAccessorHandler(provider_name, Trait.KEY)
+    router.register(provider_name, Trait.KEY, keyHandler)
 
     if "cli" in ctx.obj:
         register_provider_commands(provider, ctx.obj["cli"])
