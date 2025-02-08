@@ -18,16 +18,22 @@ Features:
 """
 
 from typing import Any
-from app.models.dataModel import RouteContext, RouteMapper, RouteHandler, Action
+from app.models.dataModel import (
+    RouteContextModel,
+    RouteMapperModel,
+    RouteHandler,
+    Accessor,
+    Trait,
+)
 import pudb
 
 
 class Router:
     def __init__(self) -> None:
         """Initialize empty route registry."""
-        self._routes: dict[RouteContext, RouteHandler] = {}
+        self._routes: dict[str, RouteHandler] = {}
 
-    def register(self, command: str, context: str, handler: RouteHandler) -> None:
+    def register(self, command: str, context: Trait, handler: RouteHandler) -> None:
         """Register handler for command/context pair.
 
         Args:
@@ -38,12 +44,13 @@ class Router:
         Raises:
             ValueError: If route already registered
         """
-        path: RouteContext = RouteContext(command, context)
-        if path in self._routes:
+        pathRoute: RouteContextModel = RouteContextModel(command, context)
+        pathStr: str = f"{pathRoute.command}_{pathRoute.context}"
+        if pathStr in self._routes:
             raise ValueError(f"Handler already registered for {command}/{context}")
-        self._routes[path] = handler
+        self._routes[pathStr] = handler
 
-    async def dispatch(self, route: RouteMapper) -> str | None:
+    async def dispatch(self, route: RouteMapperModel) -> str | None:
         """Dispatch command to appropriate handler.
 
         Args:
@@ -56,14 +63,15 @@ class Router:
             ValueError: If no handler found
             RuntimeError: If handler operation fails
         """
-        path: RouteContext = RouteContext(route.command, route.context)
-        if path not in self._routes:
+        path: RouteContextModel = RouteContextModel(route.command, route.context)
+        pathStr: str = f"{route.command}_{route.context}"
+        if pathStr not in self._routes:
             raise ValueError(f"No handler for {route.command}/{route.context}")
-        pudb.set_trace()
+        # pudb.set_trace()
 
-        handler = self._routes[path]
+        handler = self._routes[pathStr]
         try:
-            if route.action == Action.GET:
+            if route.accessor == Accessor.GET:
                 return await handler.get()
             if not route.value:
                 return None
