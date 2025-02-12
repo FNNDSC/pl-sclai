@@ -39,6 +39,18 @@ def var() -> None:
     pass
 
 
+def pack(name: str, value: str) -> DocumentData:
+    document_data: DocumentData = DocumentData(
+        data={"name": name, "value": value}, id=name
+    )
+    return document_data
+
+
+def unpack(document: DocumentData) -> str:
+    value: str = document.data["value"]
+    return value
+
+
 async def _ensure_connection() -> DatabaseCollectionModel:
     """
     Ensures a connection to the MongoDB database and collection for variables.
