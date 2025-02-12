@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Optional
 from appdirs import user_config_dir
 from app.models.dataModel import (
+    DbInitResult,
     InitializationResult,
     DefaultDocument,
     DocumentData,
@@ -135,9 +136,7 @@ async def databaseCollection_initialize(
 
     try:
         # Initialize MongoDB
-        db_response: mongodbResponse
-        col_response: mongodbResponse
-        db_response, col_response = await db_init(db_collection)
+        dbinit: DbInitResult = await db_init(db_collection)
 
         # Check if the document exists
         response: mongodbResponse = await db_contains(document.id)
