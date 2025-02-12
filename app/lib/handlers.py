@@ -73,7 +73,7 @@ class BaseHandler(RouteHandler):
         value: str = message_data.get("value", result.message)
         return value
 
-    def package(self, data: str) -> DocumentData | None:
+    def pack(self, data: str) -> DocumentData | None:
         if not self.document:
             return None
         document_data: DocumentData = DocumentData(
@@ -96,7 +96,7 @@ class BaseHandler(RouteHandler):
         db_connect: DbInitResult | None = await self.connect()
         if not db_connect:
             return None
-        payload: DocumentData | None = self.package(value)
+        payload: DocumentData | None = self.pack(value)
         if not payload:
             return None
         add: mongodbResponse = await db_docAdd(payload)
