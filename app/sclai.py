@@ -58,9 +58,7 @@ import pudb
 
 __version__: Final[str] = "0.1.0"
 
-DISPLAY_TITLE: Final[
-    str
-] = """
+DISPLAY_TITLE: Final[str] = """
 █▀ █▀▀ █   ▄▀█ █ 
 ▄█ █▄▄ █▄▄ █▀█ █ 
 """
