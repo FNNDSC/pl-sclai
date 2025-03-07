@@ -187,6 +187,7 @@ def llm() -> None:
 
 @llm.command(
     cls=RichCommand,
+    short_help="Connect to an AI provider (OpenAI, claude, etc.)",
     help=rich_help(
         command="connect",
         description="Connect to an LLM provider",
