@@ -38,6 +38,7 @@ fortune: click.Group = fortune
 
 @fortune.command(
     cls=RichCommand,
+    short_help="Tell a fortune. Learn something new.",
     help=rich_help(
         command="tell",
         description="Tell a fortune",
