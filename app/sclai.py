@@ -1,5 +1,5 @@
 """
-SCLAI Plugin Main Module.
+SCLAI Plugin Main Module
 
 This module serves as the main entry point for the SCLAI plugin, a ChRIS plugin
 integrating LangChain for AI-driven text generation.
