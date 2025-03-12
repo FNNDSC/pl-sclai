@@ -19,11 +19,12 @@ Import these models to validate and structure data used in the application.
 
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Any, Dict, NamedTuple, Protocol, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pfmongo.models.responseModel import mongodbResponse
 import click
 from dataclasses import dataclass
+import uuid
 
 
 class MessageType(Enum):
@@ -207,6 +208,30 @@ class InputMode(BaseModel):
     use_repl: bool = True
 
 
+class RuntimeInstance(BaseModel):
+    """
+    Represents a unique runtime instance of SCLAI.
+
+    Stored in MongoDB at `/<core>/sessions/<uuid>`.
+    """
+
+    instance_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user: str | None = None
+    start_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class UserSession(BaseModel):
+    """
+    Represents a logged-in user's active LLM session.
+
+    Stored in MongoDB at `/user/<username>/session`.
+    """
+
+    llm: str
+    session_id: str
+    last_active: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class Accessor(Enum):
     """Command action types.
 
@@ -221,7 +246,9 @@ class Accessor(Enum):
 
 class Trait(Enum):
     KEY = "key"
+    INSTANCE = "instance"
     SESSION = "session"
+    CONTEXT = "context"
 
 
 @dataclass
@@ -291,8 +318,9 @@ class RouteHandler(Protocol):
 
 
 @dataclass
-class LLMProviderModel:
-    """LLM provider configuration and command mapping.
+class ProviderModel:
+    """Provider configuration and command mapping. This simply
+    associates an identifier with the assessor get/set functions
 
     Args:
         name: Provider identifier (e.g., 'openai', 'claude')
