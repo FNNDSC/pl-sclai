@@ -29,6 +29,103 @@ from app.lib.log import LOG
 from app.lib.mongodb import db_init, db_contains, db_docAdd
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pfmongo.models.responseModel import mongodbResponse
+from rich.console import Console
+
+console: Console = Console()
+
+
+class DBLayout(BaseSettings):
+    """
+    databases in the system:
+
+    core: the core database with collections denoting settings, variables, etc
+    users: the users database with collection denoting individual users
+    """
+
+    core: str = "tame"
+    users: str = "users"
+
+    def core_get(self, core: str) -> str | None:
+        return getattr(self, core, None)
+
+
+rootDB: DBLayout = DBLayout()
+
+
+class CollectionLayout(BaseSettings):
+    """
+    Defines the structure and layout of MongoDB collections in the core database.
+
+    This class provides information about collection names and methods to interact
+    with collection identifiers, helping with database navigation and resolution.
+
+    Collections:
+        crawl: b64 encoded zips of websites
+        settings: system settings
+        vars: user defined variables
+        session: session contexts for REST and multiuser
+    """
+
+    crawl: str = "crawl"
+    settings: str = "settings"
+    vars: str = "vars"
+    session: str = "session"
+
+    def collection_get(self, col: str) -> str | None:
+        """
+        Get the name of a collection by its identifier.
+
+        Args:
+            col (str): The identifier of the collection to retrieve.
+
+        Returns:
+            str | None: The name of the requested collection, or None if not found.
+        """
+        return getattr(self, col, None)
+
+    def collection_has(self, col: str) -> bool:
+        """
+        Check if a string represents a valid collection in this layout.
+
+        Args:
+            col (str): The string to check against available collections.
+
+        Returns:
+            bool: True if the string matches a collection name, False otherwise.
+        """
+        # Get all class variables that don't start with underscore and aren't methods
+        collections = [
+            attr
+            for attr in dir(self)
+            if not attr.startswith("_") and not callable(getattr(self, attr))
+        ]
+        return col in collections
+
+    def dbcollection_resolve(self, col: str) -> DatabaseCollectionModel | None:
+        """
+        Resolve a collection identifier to its full database location model.
+
+        Takes a collection identifier and determines which database it belongs to,
+        then constructs and returns a DatabaseCollectionModel with the complete
+        location information.
+
+        Args:
+            col (str): The collection identifier to resolve.
+
+        Returns:
+            DatabaseCollectionModel | None: A model containing the database and
+                collection names, or None if the collection doesn't exist.
+        """
+        # If collection is in this layout's attributes, use core database
+        # Otherwise, use users database
+        database: str = rootDB.core
+        if not self.collection_has(col):
+            database = rootDB.users
+
+        return DatabaseCollectionModel(database=database, collection=col)
+
+
+collections: CollectionLayout = CollectionLayout()
 
 # Base directory for local fallback storage
 BASE_DIR: Path = Path.home() / "data" / "claimm"
