@@ -18,6 +18,7 @@ Features:
 """
 
 from typing import Any
+from app.config.settings import console
 from app.models.dataModel import (
     RouteContextModel,
     RouteMapperModel,
@@ -78,3 +79,23 @@ class Router:
             return await handler.set(route.value)
         except Exception as e:
             raise RuntimeError(f"Handler operation failed: {e}")
+
+
+router: Router = Router()
+
+
+async def accessor_handle(
+    provider: str,
+    action: Accessor,
+    trait: Trait,
+    value: str | None = None,
+    confirmation: str | None = None,
+) -> str | None:
+    route: RouteMapperModel = RouteMapperModel(
+        command=provider, context=trait, accessor=action, value=value
+    )
+    result: str | None = await router.dispatch(route)
+    console.print(
+        f"[yellow]{confirmation} {provider}[/yellow]: [green]{result}[/green]"
+    )
+    return result
