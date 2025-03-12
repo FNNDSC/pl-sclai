@@ -27,6 +27,7 @@ from app.lib.mongodb import db_contains, db_init, db_docAdd
 from app.models.dataModel import Trait
 from pfmongo.models.responseModel import mongodbResponse
 import json
+import pudb
 
 
 class BaseHandler(RouteHandler):
@@ -42,8 +43,9 @@ class BaseHandler(RouteHandler):
             collection: MongoDB collection name
             document: Optional document identifier
         """
-        self.database = database
-        self.collection = collection
+        self.database: str = database
+        self.collection: str = collection
+        self.document: str | None
         if document:
             self.document = document.value
         else:
@@ -58,19 +60,26 @@ class BaseHandler(RouteHandler):
         return db_connect
 
     async def get(self) -> str | None:
-        """Get value from MongoDB.
+        """
+        Get value from MongoDB.
+        All the "get" methods eventually arrive here.
 
         Returns:
             Stored value or None
         """
+        # pudb.set_trace()
         db_connect: DbInitResult | None = await self.connect()
         if not db_connect:
             return None
         if not self.document:
             return None
         result: mongodbResponse = await db_contains(self.document)
-        message_data = json.loads(result.message)
-        value: str = message_data.get("value", result.message)
+        value: str | None
+        try:
+            message_data = json.loads(result.message)
+            value = message_data.get("value", result.message)
+        except Exception as e:
+            value = None
         return value
 
     def pack(self, data: str) -> DocumentData | None:
@@ -82,7 +91,9 @@ class BaseHandler(RouteHandler):
         return document_data
 
     async def set(self, value: str) -> str | None:
-        """Store value in MongoDB.
+        """
+        Store value in MongoDB.
+        All the "set" methods eventually arrive here.
 
         Args:
             value: Data to store
@@ -116,3 +127,15 @@ class LLMAccessorHandler(BaseHandler):
             provider: LLM provider name (e.g. 'openai', 'claude')
         """
         super().__init__(database=provider, collection="settings", document=trait)
+
+
+class UserLLMSessionHandler(BaseHandler):
+    """Handler for User LLM Session Accessor management."""
+
+    def __init__(self, user: str, trait: Trait) -> None:
+        """Initialize handler for specific user's LLM Session
+
+        Args:
+            provider: LLM provider name (e.g. 'openai', 'claude')
+        """
+        super().__init__(database="users", collection=user, document=trait)
