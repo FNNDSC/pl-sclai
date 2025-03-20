@@ -1,0 +1,140 @@
+= User Authentication & Context Management
+pl-sclai System Design
+:toc:
+:toc-title: Table of Contents
+
+== Overview
+This document outlines the authentication and context management strategy for `pl-sclai`, accommodating both an **interactive REPL** and a **stateless REST API**.
+
+- The REPL maintains a **global context and user state**.
+- The REST API requires **explicit authentication and session context** with each request.
+- Context switching across users enforces **re-authentication** to prevent session hijacking.
+- A logout **invalidates authentication tokens**, ensuring users cannot retain access after switching accounts.
+
+== Authentication Model
+Authentication in `pl-sclai` is token-based. Upon successful login, the system:
+
+- Generates a **unique auth token**.
+- Stores it in MongoDB under `/tame/auth/<token>.json`:
++
+[source,json]
+----
+{"user": "<username>"}
+----
+
+- Returns the token to the client.
+
+=== Token Usage
+Each **API call** must include:
+
+- The **auth token** (proving user identity).
+- The **context session ID** (specifying which chat session to use).
+
+Example API request:
+
++
+[source]
+----
+POST /api/chat
+Headers:
+  Authorization: Bearer <auth_token>
+Body:
+  {
+    "context": "20250314120012345-ctx",
+    "message": "Tell me about AI."
+  }
+----
+
+=== Preventing Unauthorized Context Use
+
+- The server verifies that the **user associated with the auth token** matches the **user assigned to the requested context**.
+- If they mismatch, the request is **denied**.
+
+== Handling Logout
+A **logout request**:
+
+- Deletes the auth token from MongoDB (`/tame/auth/<token>.json`).
+- Ensures that a **future request with the old token is rejected**.
+
+This prevents:
+
+- Persistent sessions from unauthorized reuse.
+- Users from retaining access to a prior user's session.
+
+== Managing Contexts in REPL vs. REST API
+
+=== REPL (Stateful)
+- Uses **global variables** (`current_user`, `active_context`).
+- If a context switch **changes to another user's session**, a **re-login is required**.
+
+Example workflow:
+. User logs in as `alice`.
+. `active_context = "alice-session-1"`
+. If `active_context` is changed to `"bob-session-1"`, enforce **re-authentication**.
+
+=== REST API (Stateless)
+- Each request is **independent**.
+- Requires **explicit authentication and context session ID**.
+- No **persistent global state** between calls.
+
+== Future Refinements & Considerations
+
+While not in scope now, future refinements may address:
+
+=== Token Expiry
+Currently, tokens persist until logout. A **time-based expiration** mechanism could:
+
+- Store a `created_at` timestamp:
++
+[source,json]
+----
+{"user": "alice", "created_at": "2025-03-14T12:30:45Z"}
+----
+- Auto-revoke tokens after a set duration (e.g., **24 hours**).
+
+*Practical Consideration:*
+This would require an **expiry check on every request**, potentially impacting performance.
+
+=== Handling Multiple Active Sessions
+Currently, logging in **overwrites any existing session token**. Future options:
+. **Single active session** (force logout of previous login).
+. **Multiple active sessions** (store multiple tokens per user).
+
+*Practical Consideration:*
+Allowing multiple sessions would require **session tracking** per device.
+
+=== Preventing Token Replay Attacks
+If a **stolen token** is reused after logout, it should be invalid.
+
+Solution:
+- Store a **user secret** (`/tame/user/<username>.json`):
++
+[source,json]
+----
+{"secret": "abc123xyz"}
+----
+- Each login **regenerates** this secret, invalidating all previous tokens.
+
+*Practical Consideration:*
+Would require **modifying the auth verification process** to check against the latest secret.
+
+=== Race Conditions on Context Switching
+- Rapidly switching contexts in concurrent requests could cause inconsistencies.
+- A **context session lock** could:
+  - Prevent changes **within a short time window**.
+  - Ensure a request is **processed with the intended context**.
+
+*Practical Consideration:*
+Would require **locking mechanisms in MongoDB** to avoid data conflicts.
+
+== Conclusion
+The current design is **simple and effective** for managing authentication and context security. Future refinements will introduce **token expiration, multiple sessions, replay attack prevention, and race condition handling** as needed.
+
+For now:
+
+- **REPL enforces global user-context alignment**.
+- **REST API requires explicit authentication & session context per request**.
+- **Logout ensures token invalidation**, preventing unauthorized access.
+
+This approach ensures **robust yet lightweight security** while supporting both **interactive and stateless usage models**.
+
