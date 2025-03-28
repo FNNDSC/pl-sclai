@@ -249,6 +249,7 @@ class Trait(Enum):
     INSTANCE = "instance"
     SESSION = "session"
     CONTEXT = "context"
+    AUTH = "auth"
 
 
 @dataclass
@@ -311,7 +312,7 @@ class RouteHandler(Protocol):
             value: Data to store
 
         Raises:
-            NotImplementedError: If handler doesn't support SET
+            NotImplementedError: If handler doesn't support SET ffmongodb
             ValueError: If value is invalid
         """
         ...
@@ -329,3 +330,18 @@ class ProviderModel:
 
     name: str
     commands: dict[str, Callable]
+
+
+class UserBaseModel(BaseModel):
+    status: bool
+    message: str
+    username: str
+
+
+class UserLoginModel(UserBaseModel):
+    auth: str
+    timestamp: str
+
+
+class UserCreateModel(UserBaseModel):
+    alreadyExists: bool
