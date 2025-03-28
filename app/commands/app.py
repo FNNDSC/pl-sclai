@@ -17,6 +17,7 @@ from app.commands.llm import llm
 from app.commands.var import var
 from app.commands.fortune import fortune
 from app.commands.user import user
+from app.commands.context import context
 
 console: Console = Console()
 
@@ -55,6 +56,7 @@ cli.add_command(llm)
 cli.add_command(var)
 cli.add_command(fortune)
 cli.add_command(user)
+cli.add_command(context)
 
 # Export the `cli` group for use in other modules
 cli_group: click.Group = cli
