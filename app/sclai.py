@@ -39,14 +39,9 @@ Note:
 from pathlib import Path
 from argparse import Namespace, ArgumentParser, ArgumentDefaultsHelpFormatter
 from chris_plugin import chris_plugin
-from app.config.settings import (
-    config_initialize,
-    config_update,
-    databaseCollection_initialize,
-)
+from app.lib.setup import app_configure
 from app.lib.repl import repl_do
 from app.lib.input import mode_detect, input_readStdin, input_handle, InputMode
-from app.models.dataModel import InitializationResult, DatabaseCollectionModel
 import asyncio
 import signal
 from rich.console import Console
@@ -58,9 +53,11 @@ import pudb
 
 __version__: Final[str] = "0.1.0"
 
-DISPLAY_TITLE: Final[str] = """
-█▀ █▀▀ █   ▄▀█ █ 
-▄█ █▄▄ █▄▄ █▀█ █ 
+DISPLAY_TITLE: Final[
+    str
+] = """
+█▀ █▀▀ █   ▄▀█ █
+▄█ █▄▄ █▄▄ █▀█ █
 """
 
 console: Final[Console] = Console()
@@ -81,58 +78,6 @@ parser.add_argument(
 )
 
 
-async def config_setup(options: Namespace) -> bool:
-    """Initialize and update configuration.
-
-    Args:
-        options: Parsed command-line arguments
-
-    Returns:
-        bool: True if configuration successful
-
-    Note:
-        Initializes databases and handles config updates
-    """
-    try:
-        # Initialize configuration
-        result: InitializationResult = await config_initialize()
-
-        result = await databaseCollection_initialize(
-            DatabaseCollectionModel(database="claimm", collection="vars"),
-        )
-        result = await databaseCollection_initialize(
-            DatabaseCollectionModel(database="claimm", collection="crawl"),
-        )
-
-        if not result.status:
-            console.print(
-                f"[bold red]Configuration initialization failed: {result.message}[/bold red]"
-            )
-            return False
-
-        # Update configuration if options provided
-        if options.use or options.key:
-            try:
-                if await config_update(options.use, options.key):
-                    console.print(
-                        "[bold green]Configuration updated successfully.[/bold green]"
-                    )
-                else:
-                    console.print(
-                        "[bold red]Failed to update configuration.[/bold red]"
-                    )
-                    return False
-            except ValueError as e:
-                console.print(f"[bold red]Error:[/bold red] {e}")
-                return False
-
-        return True
-
-    except Exception as e:
-        LOG(f"Configuration setup failed: {e}")
-        return False
-
-
 async def async_main(options: Namespace) -> None:
     """Asynchronous main function handling all input modes.
 
@@ -146,7 +91,7 @@ async def async_main(options: Namespace) -> None:
         3. interactive REPL
     """
     try:
-        if not await config_setup(options):
+        if not await app_configure(options):
             return
 
         # Detect input mode
@@ -158,7 +103,6 @@ async def async_main(options: Namespace) -> None:
             await input_handle(input_text, non_interactive=True)
 
         elif mode.ask_string:
-            # pudb.set_trace()
             await input_handle(mode.ask_string, non_interactive=True)
 
         else:
@@ -184,7 +128,7 @@ def signal_handle(sig: int, frame: Optional[FrameType]) -> None:
     """
     console.print(
         """
-        [bold red]Interrupt received. 
+        [bold red]Interrupt received.
         [bold cyan]Hit [bold yellow]Enter[/bold yellow][bold cyan] to gracefully exit.[/bold cyan]
         """
     )
